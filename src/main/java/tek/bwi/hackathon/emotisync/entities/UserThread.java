@@ -1,18 +1,24 @@
 package tek.bwi.hackathon.emotisync.entities;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import tek.bwi.hackathon.emotisync.models.ThreadParticipant;
+
+import java.util.List;
 
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 @Document(collection = "threads")
 public class UserThread {
     @Id
     private String threadId;
     private String requestId;
-    private String participantId;
-    private String threadType;
+    private List<ThreadParticipant> participantIds;
+    private String status;
+    private String createdAt;
 }

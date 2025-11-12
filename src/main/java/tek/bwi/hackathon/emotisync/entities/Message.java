@@ -10,10 +10,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "messages")
 public class Message {
     @Id
-    private String id;
+    private String messageId;
     private String threadId;
-    private String senderId;
-    private String senderRole;
-    private String message;
+    private String userId;
+    private String userRole;
+    private String content;
+    private GuestFeedback guestFeedback;
     private String time;
 }

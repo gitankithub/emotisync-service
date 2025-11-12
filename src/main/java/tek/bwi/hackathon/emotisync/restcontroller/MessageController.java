@@ -2,8 +2,6 @@ package tek.bwi.hackathon.emotisync.restcontroller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import tek.bwi.hackathon.emotisync.entities.Message;
 import tek.bwi.hackathon.emotisync.service.MessageService;
 
@@ -14,9 +12,15 @@ import java.util.List;
 public class MessageController {
     @Autowired private MessageService service;
     @PostMapping
-    public Mono<Message> create(@RequestBody Message msg) { return service.create(msg); }
+    public Message create(@RequestBody Message msg) {
+        try {
+            return service.create(msg);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
     @GetMapping("/thread/{threadId}")
-    public Flux<Message> getByThreadId(@PathVariable String threadId) { return service.getByThreadId(threadId); }
+    public List<Message> getByThreadId(@PathVariable String threadId) { return service.getByThreadId(threadId); }
     @GetMapping("/{id}")
-    public Mono<Message> getById(@PathVariable String id) { return service.getById(id); }
+    public Message getById(@PathVariable String id) { return service.getById(id); }
 }
