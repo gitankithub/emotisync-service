@@ -24,7 +24,7 @@ public class LLMOrchestrationService {
 
     public void handleLLMResponse(
             LLMResponse llmResponse,
-            Message message) throws Exception {
+            Message message) {
         // Check for existing service request linked to this thread
         ServiceRequest existingRequest = requestRepository.findByUserThread_ThreadId(message.getThreadId());
         if (llmResponse.isActionNeeded() && llmResponse.getActionDetail() != null) {
@@ -69,7 +69,7 @@ public class LLMOrchestrationService {
     private void addAllResponseMessages(
             LLMResponse llmResponse,
             Message originalMsg,
-            ServiceRequest request) throws Exception {
+            ServiceRequest request) {
         if (nonEmpty(llmResponse.getResponseForGuest())) {
             Message guestMsg = new Message();
             guestMsg.setUserId(originalMsg.getUserId());

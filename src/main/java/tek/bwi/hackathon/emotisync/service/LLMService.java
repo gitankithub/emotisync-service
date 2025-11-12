@@ -47,8 +47,7 @@ public class LLMService {
             GeminiRequest geminiRequest = new GeminiRequest(List.of(
                     new GeminiContent(List.of(new GeminiPart(prompt)))
             ));
-            String payload = null;
-            payload = objectMapper.writeValueAsString(geminiRequest);
+            String payload = objectMapper.writeValueAsString(geminiRequest);
             LLMResponse llmResponse = geminiClient.sendPrompt(payload);
             llmOrchestrationService.handleLLMResponse(llmResponse, message);
         } catch (Exception e) {
@@ -71,8 +70,7 @@ public class LLMService {
             GeminiRequest geminiRequest = new GeminiRequest(List.of(
                     new GeminiContent(List.of(new GeminiPart(prompt)))
             ));
-            String payload = null;
-            payload = objectMapper.writeValueAsString(geminiRequest);
+            String payload = objectMapper.writeValueAsString(geminiRequest);
             LLMResponse llmResponse = geminiClient.sendPrompt(payload);
             llmOrchestrationService. handleLLMResponse(llmResponse, message);
         } catch (Exception e) {
