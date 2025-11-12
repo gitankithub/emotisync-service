@@ -5,12 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.client.GeminiClient;
-import tek.bwi.hackathon.emotisync.entities.*;
-import tek.bwi.hackathon.emotisync.repository.ReservationRepository;
+import tek.bwi.hackathon.emotisync.entities.Message;
+import tek.bwi.hackathon.emotisync.entities.Reservation;
+import tek.bwi.hackathon.emotisync.entities.UserInfo;
 import tek.bwi.hackathon.emotisync.models.GeminiContent;
 import tek.bwi.hackathon.emotisync.models.GeminiPart;
 import tek.bwi.hackathon.emotisync.models.GeminiRequest;
 import tek.bwi.hackathon.emotisync.models.LLMResponse;
+import tek.bwi.hackathon.emotisync.repository.ReservationRepository;
 
 import java.util.List;
 import java.util.Objects;

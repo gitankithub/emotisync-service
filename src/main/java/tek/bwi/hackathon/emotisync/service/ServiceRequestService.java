@@ -4,8 +4,8 @@ import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
 import tek.bwi.hackathon.emotisync.entities.UserInfo;
 import tek.bwi.hackathon.emotisync.entities.UserThread;
-import tek.bwi.hackathon.emotisync.repository.RequestRepository;
 import tek.bwi.hackathon.emotisync.models.ThreadParticipant;
+import tek.bwi.hackathon.emotisync.repository.RequestRepository;
 
 import java.time.Instant;
 import java.util.ArrayList;

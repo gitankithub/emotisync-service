@@ -4,9 +4,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.entities.Message;
 import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
+import tek.bwi.hackathon.emotisync.models.LLMResponse;
 import tek.bwi.hackathon.emotisync.repository.MessageRepository;
 import tek.bwi.hackathon.emotisync.repository.RequestRepository;
-import tek.bwi.hackathon.emotisync.models.LLMResponse;
 
 @Service
 public class LLMOrchestrationService {
