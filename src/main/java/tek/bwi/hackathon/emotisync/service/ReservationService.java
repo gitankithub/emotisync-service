@@ -11,7 +11,12 @@ import java.util.UUID;
 
 @Service
 public class ReservationService {
-    @Autowired private ReservationRepository repo;
+    private final ReservationRepository repo;
+
+    @Autowired
+    public ReservationService(ReservationRepository repo) {
+        this.repo = repo;
+    }
 
     public Reservation create(Reservation reservation) {
         reservation.setId(UUID.randomUUID().toString());
@@ -26,7 +31,7 @@ public class ReservationService {
         return repo.findById(id).orElse(null);
     }
     public List<Reservation> getByUserId(String userId) {
-        return repo.findByUserId(userId);
+        return repo.findByGuestId(userId);
     }
     public List<Reservation> getByRoomNumber(String roomNumber) {
         return repo.findByRoomNumber(roomNumber);

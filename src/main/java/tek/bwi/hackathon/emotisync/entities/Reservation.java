@@ -11,7 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Reservation {
     @Id
     private String id;
-    private String name;
+    private String propertyName;
     private String roomNumber;
     private String roomType;         // e.g., DELUXE, SUITE, STANDARD
     private int numberOfOccupants;   // e.g., 2

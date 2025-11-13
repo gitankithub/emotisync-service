@@ -42,7 +42,7 @@ public class LLMService {
         try {
             log.info("Processing guest message: {}", message);
             UserInfo userInfo = userService.getById(message.getUserId());
-            Reservation reservation = reservationRepository.findByUserIdAndStatus(message.getUserId(), "CHECKED_IN");
+            Reservation reservation = reservationRepository.findByGuestIdAndStatus(message.getUserId(), "CHECKED_IN");
             log.info("Fetched User id: {}", userInfo != null ? userInfo.getUserId() : "null");
             log.info("Fetched Reservation id: {}", reservation != null ? reservation.getId() : "null");
             String prompt = promptBuilder.buildGuestPrompt(message, userInfo, reservation, chatHistory);
@@ -65,7 +65,7 @@ public class LLMService {
             log.info("Processing staff message: {}", message);
             UserInfo userInfo = userService.getById(message.getUserId());
             log.info("Fetched User id: {}", userInfo != null ? userInfo.getUserId() : "null");
-            Reservation reservation = reservationRepository.findByUserIdAndStatus(message.getUserId(), "CHECKED_IN");
+            Reservation reservation = reservationRepository.findByGuestIdAndStatus(message.getUserId(), "CHECKED_IN");
             log.info("Fetched Reservation id: {}", reservation != null ? reservation.getId() : "null");
             String prompt = promptBuilder.buildStaffPrompt(
                     message,
