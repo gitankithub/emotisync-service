@@ -1,9 +1,8 @@
 package tek.bwi.hackathon.emotisync.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import tek.bwi.hackathon.emotisync.client.GeminiClient;
 import tek.bwi.hackathon.emotisync.entities.Message;
+import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
 import tek.bwi.hackathon.emotisync.entities.UserThread;
 import tek.bwi.hackathon.emotisync.repository.MessageRepository;
 import tek.bwi.hackathon.emotisync.repository.ThreadRepository;
@@ -11,14 +10,18 @@ import tek.bwi.hackathon.emotisync.repository.ThreadRepository;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class MessageService {
-    @Autowired private MessageRepository messageRepo;
-    @Autowired private GeminiClient geminiClient;
-    @Autowired private LLMService llmService;
-    @Autowired private ThreadRepository threadRepository;
+    private final MessageRepository messageRepo;
+    private final LLMService llmService;
+    private final ThreadRepository threadRepository;
+
+    public MessageService(MessageRepository messageRepo, LLMService llmService, ThreadRepository threadRepository) {
+        this.messageRepo = messageRepo;
+        this.llmService = llmService;
+        this.threadRepository = threadRepository;
+    }
 
     public Message create(Message msg) {
         List<Message> chatHistory = populateChatHistory(msg);
@@ -26,23 +29,20 @@ public class MessageService {
         if ("GUEST".equalsIgnoreCase(msg.getUserRole())) {
             if (msg.getThreadId() != null && !msg.getThreadId().isBlank()) {
                 Message savedMsg = messageRepo.save(msg);
-                llmService.processGuestMessage(savedMsg, chatHistory);
+                ServiceRequest serviceRequest = llmService.processGuestMessage(msg, chatHistory);
+                msg.setThreadId(serviceRequest.getUserThread().getThreadId());
                 return savedMsg;
             } else {
                 // First interaction, no thread: create thread, save message, then process LLM
-                String newThreadId = UUID.randomUUID().toString();
-                UserThread newThread = new UserThread(newThreadId, null, null, "OPEN", String.valueOf(Instant.now()));
-
-                UserThread savedThread = threadRepository.save(newThread);
-                msg.setThreadId(savedThread.getThreadId());
-
-                Message savedMsg = messageRepo.save(msg);
-                llmService.processGuestMessage(savedMsg, chatHistory);
-                return savedMsg;
+                msg.setTime(Instant.now().toString());
+                ServiceRequest serviceRequest = llmService.processGuestMessage(msg, chatHistory);
+                msg.setThreadId(serviceRequest.getUserThread().getThreadId());
+                return messageRepo.save(msg);
             }
         } else if ("STAFF".equalsIgnoreCase(msg.getUserRole()) || "ADMIN".equalsIgnoreCase(msg.getUserRole())) {
             Message savedMsg = messageRepo.save(msg);
-            llmService.processAdminStaffMessage(savedMsg, chatHistory);
+            ServiceRequest serviceRequest = llmService.processAdminStaffMessage(savedMsg, chatHistory);
+            msg.setThreadId(serviceRequest.getUserThread().getThreadId());
             return savedMsg;
         } else {
             throw new IllegalArgumentException("Unknown sender role");

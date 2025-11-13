@@ -13,7 +13,7 @@ public class StaffAvailability {
     private String id;
     private String staffId;
     private String status;
-    private String currentRequestId;   // optional: which request (if busy)
+    private String currentRequestId;
     private Instant startTime;
     private Instant endTime;
 }

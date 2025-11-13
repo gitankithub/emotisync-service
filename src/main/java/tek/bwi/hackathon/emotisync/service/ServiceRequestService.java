@@ -6,6 +6,7 @@ import tek.bwi.hackathon.emotisync.entities.UserInfo;
 import tek.bwi.hackathon.emotisync.entities.UserThread;
 import tek.bwi.hackathon.emotisync.models.ThreadParticipant;
 import tek.bwi.hackathon.emotisync.repository.RequestRepository;
+import tek.bwi.hackathon.emotisync.repository.ThreadRepository;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -16,51 +17,57 @@ import java.util.UUID;
 public class ServiceRequestService {
     private final RequestRepository requestRepo;
     private final UserService userService;
+    private final ThreadRepository threadRepository;
 
-    public ServiceRequestService(RequestRepository requestRepo, UserService userService) {
+    public ServiceRequestService(RequestRepository requestRepo, UserService userService, ThreadRepository threadRepository) {
         this.requestRepo = requestRepo;
         this.userService = userService;
+        this.threadRepository = threadRepository;
     }
 
     public ServiceRequest create(ServiceRequest request) {
+        // Set basic fields (requestId auto-assigned with save)
         String reqId = UUID.randomUUID().toString();
         request.setRequestId(reqId);
         request.setStatus("OPEN");
         request.setCreatedAt(Instant.now().toString());
         request.setUpdatedAt(Instant.now().toString());
-
-        UserThread chatThread;
-        if (request.getUserThread() != null && request.getUserThread().getThreadId() != null) {
-            chatThread = request.getUserThread();
-        } else {
-            chatThread = new UserThread();
-            chatThread.setThreadId(UUID.randomUUID().toString());
-            chatThread.setStatus("OPEN");
-            chatThread.setCreatedAt(Instant.now().toString());
-        }
+        UserThread chatThread = new UserThread();
+        chatThread.setStatus("OPEN");
+        chatThread.setCreatedAt(Instant.now().toString());
         chatThread.setRequestId(reqId);
-        request.setUserThread(chatThread);
-        assignStaffToRequest(request);
         assignThreadParticipants(request.getGuestId(), request.getAssignedTo(), chatThread);
+        assignStaffToRequest(request, chatThread);
+        chatThread = threadRepository.save(chatThread);
 
+        request.setUserThread(chatThread);
         return requestRepo.save(request);
     }
 
     private void assignThreadParticipants(String guestId, String assignedTo, UserThread chatThread) {
-        List<ThreadParticipant> participants = new ArrayList<>(List.of(new ThreadParticipant(guestId, "GUEST"), new ThreadParticipant(assignedTo, "STAFF")));
-        List<UserInfo> availList = userService.getByRole("ADMIN");
-        if (availList != null && !availList.isEmpty()) {
-            String adminId = availList.get(0).getUserId();
-            participants.add(new ThreadParticipant(adminId, "GUEST"));
+        List<ThreadParticipant> participants = new ArrayList<>();
+        participants.add(new ThreadParticipant(guestId, "GUEST"));
+        participants.add(new ThreadParticipant(assignedTo, "STAFF"));
+
+        List<UserInfo> adminList = userService.getByRole("ADMIN");
+        if (adminList != null && !adminList.isEmpty()) {
+            String adminId = adminList.get(0).getUserId();
+            participants.add(new ThreadParticipant(adminId, "ADMIN")); // Fixed role from "GUEST" to "ADMIN"
         }
         chatThread.setParticipantIds(participants);
     }
 
-    private void assignStaffToRequest(ServiceRequest request) {
+    private void assignStaffToRequest(ServiceRequest request, UserThread chatThread) {
         List<UserInfo> availList = userService.getByRole("STAFF");
         if (availList != null && !availList.isEmpty()) {
             String assignedStaffId = availList.get(0).getUserId();
             request.setAssignedTo(assignedStaffId);
+            request.setStatus("ASSIGNED");
+            chatThread.setStatus("ASSIGNED");
+        } else {
+            request.setAssignedTo(null);
+            request.setStatus("OPEN");
+            chatThread.setStatus("OPEN");
         }
     }
 

@@ -47,6 +47,7 @@ public class PromptBuilderService {
                     "type": "...",           // e.g. "escalate", "createServiceRequest", "closeRequest"
                     "targetUserRole": "...", // e.g. "staff", "admin"
                     "escalationTarget": "serviceRequest|thread|both",
+                    "title": "...",
                     "description": "...",
                     "urgency": "routine|urgent|escalated"
                   }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.client.GeminiClient;
 import tek.bwi.hackathon.emotisync.entities.Message;
 import tek.bwi.hackathon.emotisync.entities.Reservation;
+import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
 import tek.bwi.hackathon.emotisync.entities.UserInfo;
 import tek.bwi.hackathon.emotisync.models.LLMPayload;
 import tek.bwi.hackathon.emotisync.models.PayloadPart;
@@ -38,7 +39,7 @@ public class LLMService {
         this.llmOrchestrationService = llmOrchestrationService;
     }
 
-    public void processGuestMessage(Message message, List<Message> chatHistory) {
+    public ServiceRequest processGuestMessage(Message message, List<Message> chatHistory) {
         try {
             log.info("Processing guest message: {}", message);
             UserInfo userInfo = userService.getById(message.getUserId());
@@ -54,13 +55,13 @@ public class LLMService {
             log.info("LLM Request Payload: {}", payload);
             LLMResponse llmResponse = geminiClient.sendPrompt(payload);
             log.info("LLM Response: {}", llmResponse);
-            llmOrchestrationService.handleLLMResponse(llmResponse, message);
+            return llmOrchestrationService.handleLLMResponse(llmResponse, message);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void processAdminStaffMessage(Message message, List<Message> chatHistory) {
+    public ServiceRequest processAdminStaffMessage(Message message, List<Message> chatHistory) {
         try {
             log.info("Processing staff message: {}", message);
             UserInfo userInfo = userService.getById(message.getUserId());
@@ -80,7 +81,7 @@ public class LLMService {
             ));
             String payload = objectMapper.writeValueAsString(geminiRequest);
             LLMResponse llmResponse = geminiClient.sendPrompt(payload);
-            llmOrchestrationService. handleLLMResponse(llmResponse, message);
+            return llmOrchestrationService. handleLLMResponse(llmResponse, message);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

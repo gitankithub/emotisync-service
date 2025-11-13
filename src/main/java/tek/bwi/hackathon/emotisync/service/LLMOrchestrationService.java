@@ -9,6 +9,8 @@ import tek.bwi.hackathon.emotisync.models.LLMResponse;
 import tek.bwi.hackathon.emotisync.repository.MessageRepository;
 import tek.bwi.hackathon.emotisync.repository.RequestRepository;
 
+import java.time.Instant;
+
 @Slf4j
 @Service
 public class LLMOrchestrationService {
@@ -24,7 +26,7 @@ public class LLMOrchestrationService {
         this.messageRepository = messageRepository;
     }
 
-    public void handleLLMResponse(
+    public ServiceRequest handleLLMResponse(
             LLMResponse llmResponse,
             Message message) {
         // Check for existing service request linked to this thread
@@ -34,9 +36,15 @@ public class LLMOrchestrationService {
             String actionType = llmResponse.getActionDetail().getType();
             switch (actionType.toLowerCase()) {
                 case "createservicerequest":
+                    if (existingRequest != null) {
+                        log.info("ServiceRequest already exists for threadId={}", message.getThreadId());
+                        addAllResponseMessages(llmResponse, message, existingRequest);
+                        break;
+                    }
                     // Create new service request
                     ServiceRequest newRequest = serviceRequestService.create(buildServiceRequest(llmResponse, message));
                     addAllResponseMessages(llmResponse, message, newRequest);
+                    existingRequest = newRequest;
                     break;
 
                 case "escalate":
@@ -57,9 +65,10 @@ public class LLMOrchestrationService {
         } else {
             addAllResponseMessages(llmResponse, message, existingRequest);
         }
+        return existingRequest;
     }
 
-    private static ServiceRequest buildServiceRequest(LLMResponse llmResponse, Message message) {
+    private ServiceRequest buildServiceRequest(LLMResponse llmResponse, Message message) {
         ServiceRequest serviceRequest = new ServiceRequest();
         serviceRequest.setRequestTitle(llmResponse.getActionDetail().getTitle());
         serviceRequest.setRequestDescription(llmResponse.getActionDetail().getDescription());
@@ -79,6 +88,7 @@ public class LLMOrchestrationService {
             guestMsg.setThreadId(request.getUserThread().getThreadId());
             guestMsg.setContent(llmResponse.getResponseForGuest());
             guestMsg.setUserRole("GUEST");
+            guestMsg.setTime(Instant.now().toString());
             messageRepository.save(guestMsg);
         }
         if (nonEmpty(llmResponse.getResponseForStaff())) {
@@ -87,6 +97,7 @@ public class LLMOrchestrationService {
             staffMsg.setThreadId(request.getUserThread().getThreadId());
             staffMsg.setContent(llmResponse.getResponseForStaff());
             staffMsg.setUserRole("STAFF");
+            staffMsg.setTime(Instant.now().toString());
             messageRepository.save(staffMsg);
         }
         if (nonEmpty(llmResponse.getResponseForAdmin())) {
@@ -98,6 +109,7 @@ public class LLMOrchestrationService {
             adminMsg.setThreadId(request.getUserThread().getThreadId());
             adminMsg.setContent(llmResponse.getResponseForAdmin());
             adminMsg.setUserRole("ADMIN");
+            adminMsg.setTime(Instant.now().toString());
             messageRepository.save(adminMsg);
         }
     }
