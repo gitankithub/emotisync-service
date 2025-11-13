@@ -11,10 +11,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Reservation {
     @Id
     private String id;
+    private String name;
     private String roomNumber;
     private String roomType;         // e.g., DELUXE, SUITE, STANDARD
     private int numberOfOccupants;   // e.g., 2
-    private String userId;           // Who made the reservation
+    private String guestId;           // Who made the reservation
     private String status;           // BOOKED, CHECKED_IN, CANCELLED, COMPLETED
     private String checkInDate;      // ISO date string
     private String checkOutDate;

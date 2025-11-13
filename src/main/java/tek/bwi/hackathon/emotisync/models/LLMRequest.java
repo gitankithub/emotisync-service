@@ -9,6 +9,6 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class GeminiRequest {
-    private List<GeminiContent> contents;
+public class LLMRequest {
+    private List<LLMPayload> contents;
 }

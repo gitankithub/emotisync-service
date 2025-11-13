@@ -49,6 +49,7 @@ public class GeminiClient {
         String responseBody;
         try {
             responseBody = responseMono.block();
+            log.info("Gemini API response: {}", responseBody);
         } catch (WebClientResponseException webEx) {
             log.error("Gemini API returned error: {} - {}", webEx.getStatusCode(), webEx.getResponseBodyAsString());
             throw new RuntimeException("Gemini API error: " + webEx.getMessage(), webEx);
@@ -66,6 +67,7 @@ public class GeminiClient {
             if (llmJsonText.startsWith("```json")) {
                 llmJsonText = llmJsonText.substring(llmJsonText.indexOf('\n') + 1).trim();
             }
+            log.info("Extracted LLM JSON Text: {}", llmJsonText);
             return objectMapper.readValue(llmJsonText, LLMResponse.class);
 
         } catch (Exception ex) {

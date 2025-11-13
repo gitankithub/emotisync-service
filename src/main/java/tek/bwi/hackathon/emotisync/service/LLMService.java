@@ -8,9 +8,9 @@ import tek.bwi.hackathon.emotisync.client.GeminiClient;
 import tek.bwi.hackathon.emotisync.entities.Message;
 import tek.bwi.hackathon.emotisync.entities.Reservation;
 import tek.bwi.hackathon.emotisync.entities.UserInfo;
-import tek.bwi.hackathon.emotisync.models.GeminiContent;
-import tek.bwi.hackathon.emotisync.models.GeminiPart;
-import tek.bwi.hackathon.emotisync.models.GeminiRequest;
+import tek.bwi.hackathon.emotisync.models.LLMPayload;
+import tek.bwi.hackathon.emotisync.models.PayloadPart;
+import tek.bwi.hackathon.emotisync.models.LLMRequest;
 import tek.bwi.hackathon.emotisync.models.LLMResponse;
 import tek.bwi.hackathon.emotisync.repository.ReservationRepository;
 
@@ -40,15 +40,20 @@ public class LLMService {
 
     public void processGuestMessage(Message message, List<Message> chatHistory) {
         try {
+            log.info("Processing guest message: {}", message);
             UserInfo userInfo = userService.getById(message.getUserId());
             Reservation reservation = reservationRepository.findByUserIdAndStatus(message.getUserId(), "CHECKED_IN");
+            log.info("Fetched User id: {}", userInfo != null ? userInfo.getUserId() : "null");
+            log.info("Fetched Reservation id: {}", reservation != null ? reservation.getId() : "null");
             String prompt = promptBuilder.buildGuestPrompt(message, userInfo, reservation, chatHistory);
-
-            GeminiRequest geminiRequest = new GeminiRequest(List.of(
-                    new GeminiContent(List.of(new GeminiPart(prompt)))
+            log.info("Constructed Prompt: {}", prompt);
+            LLMRequest llmRequest = new LLMRequest(List.of(
+                    new LLMPayload(List.of(new PayloadPart(prompt)))
             ));
-            String payload = objectMapper.writeValueAsString(geminiRequest);
+            String payload = objectMapper.writeValueAsString(llmRequest);
+            log.info("LLM Request Payload: {}", payload);
             LLMResponse llmResponse = geminiClient.sendPrompt(payload);
+            log.info("LLM Response: {}", llmResponse);
             llmOrchestrationService.handleLLMResponse(llmResponse, message);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -57,8 +62,11 @@ public class LLMService {
 
     public void processAdminStaffMessage(Message message, List<Message> chatHistory) {
         try {
+            log.info("Processing staff message: {}", message);
             UserInfo userInfo = userService.getById(message.getUserId());
+            log.info("Fetched User id: {}", userInfo != null ? userInfo.getUserId() : "null");
             Reservation reservation = reservationRepository.findByUserIdAndStatus(message.getUserId(), "CHECKED_IN");
+            log.info("Fetched Reservation id: {}", reservation != null ? reservation.getId() : "null");
             String prompt = promptBuilder.buildStaffPrompt(
                     message,
                     Objects.requireNonNull(userInfo),
@@ -67,8 +75,8 @@ public class LLMService {
                     chatHistory
             );
 
-            GeminiRequest geminiRequest = new GeminiRequest(List.of(
-                    new GeminiContent(List.of(new GeminiPart(prompt)))
+            LLMRequest geminiRequest = new LLMRequest(List.of(
+                    new LLMPayload(List.of(new PayloadPart(prompt)))
             ));
             String payload = objectMapper.writeValueAsString(geminiRequest);
             LLMResponse llmResponse = geminiClient.sendPrompt(payload);
@@ -81,7 +89,7 @@ public class LLMService {
     private UserInfo getGuestInfo(Reservation reservation) {
         // Using Optional to handle potential null value of reservation
         return Optional.ofNullable(reservation)
-                .map(Reservation::getUserId)
+                .map(Reservation::getGuestId)
                 .map(userService::getById)
                 .orElse(null);
     }

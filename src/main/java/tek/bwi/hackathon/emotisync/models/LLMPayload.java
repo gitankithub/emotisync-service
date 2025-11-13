@@ -10,7 +10,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class GeminiContent {
-    private List<GeminiPart> parts;
+public class LLMPayload {
+    private List<PayloadPart> parts;
 }
 

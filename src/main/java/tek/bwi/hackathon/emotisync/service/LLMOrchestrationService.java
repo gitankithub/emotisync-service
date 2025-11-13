@@ -1,5 +1,6 @@
 package tek.bwi.hackathon.emotisync.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.entities.Message;
@@ -8,6 +9,7 @@ import tek.bwi.hackathon.emotisync.models.LLMResponse;
 import tek.bwi.hackathon.emotisync.repository.MessageRepository;
 import tek.bwi.hackathon.emotisync.repository.RequestRepository;
 
+@Slf4j
 @Service
 public class LLMOrchestrationService {
 
@@ -27,6 +29,7 @@ public class LLMOrchestrationService {
             Message message) {
         // Check for existing service request linked to this thread
         ServiceRequest existingRequest = requestRepository.findByUserThread_ThreadId(message.getThreadId());
+        log.info("Existing Service Request: {}", existingRequest);
         if (llmResponse.isActionNeeded() && llmResponse.getActionDetail() != null) {
             String actionType = llmResponse.getActionDetail().getType();
             switch (actionType.toLowerCase()) {
