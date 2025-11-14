@@ -10,6 +10,7 @@ import tek.bwi.hackathon.emotisync.repository.ThreadRepository;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class MessageService {
@@ -29,20 +30,18 @@ public class MessageService {
         if ("GUEST".equalsIgnoreCase(msg.getUserRole())) {
             if (msg.getThreadId() != null && !msg.getThreadId().isBlank()) {
                 Message savedMsg = messageRepo.save(msg);
-                ServiceRequest serviceRequest = llmService.processGuestMessage(msg, chatHistory);
-                msg.setThreadId(serviceRequest.getUserThread().getThreadId());
+                llmService.processGuestMessage(msg, chatHistory);
                 return savedMsg;
             } else {
                 // First interaction, no thread: create thread, save message, then process LLM
                 msg.setTime(Instant.now().toString());
-                ServiceRequest serviceRequest = llmService.processGuestMessage(msg, chatHistory);
-                msg.setThreadId(serviceRequest.getUserThread().getThreadId());
+                msg.setThreadId(UUID.randomUUID().toString());
+                llmService.processGuestMessage(msg, chatHistory);
                 return messageRepo.save(msg);
             }
         } else if ("STAFF".equalsIgnoreCase(msg.getUserRole()) || "ADMIN".equalsIgnoreCase(msg.getUserRole())) {
             Message savedMsg = messageRepo.save(msg);
-            ServiceRequest serviceRequest = llmService.processAdminStaffMessage(savedMsg, chatHistory);
-            msg.setThreadId(serviceRequest.getUserThread().getThreadId());
+            llmService.processAdminStaffMessage(savedMsg, chatHistory);
             return savedMsg;
         } else {
             throw new IllegalArgumentException("Unknown sender role");

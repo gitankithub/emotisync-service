@@ -32,12 +32,12 @@ public class ServiceRequestService {
         request.setStatus("OPEN");
         request.setCreatedAt(Instant.now().toString());
         request.setUpdatedAt(Instant.now().toString());
-        UserThread chatThread = new UserThread();
+        UserThread chatThread = request.getUserThread();
         chatThread.setStatus("OPEN");
         chatThread.setCreatedAt(Instant.now().toString());
         chatThread.setRequestId(reqId);
-        assignThreadParticipants(request.getGuestId(), request.getAssignedTo(), chatThread);
         assignStaffToRequest(request, chatThread);
+        assignThreadParticipants(request.getGuestId(), request.getAssignedTo(), chatThread);
         chatThread = threadRepository.save(chatThread);
 
         request.setUserThread(chatThread);

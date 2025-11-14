@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.entities.Message;
 import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
+import tek.bwi.hackathon.emotisync.entities.UserThread;
 import tek.bwi.hackathon.emotisync.models.LLMResponse;
 import tek.bwi.hackathon.emotisync.repository.MessageRepository;
 import tek.bwi.hackathon.emotisync.repository.RequestRepository;
@@ -26,7 +27,7 @@ public class LLMOrchestrationService {
         this.messageRepository = messageRepository;
     }
 
-    public ServiceRequest handleLLMResponse(
+    public void handleLLMResponse(
             LLMResponse llmResponse,
             Message message) {
         // Check for existing service request linked to this thread
@@ -44,7 +45,6 @@ public class LLMOrchestrationService {
                     // Create new service request
                     ServiceRequest newRequest = serviceRequestService.create(buildServiceRequest(llmResponse, message));
                     addAllResponseMessages(llmResponse, message, newRequest);
-                    existingRequest = newRequest;
                     break;
 
                 case "escalate":
@@ -65,7 +65,6 @@ public class LLMOrchestrationService {
         } else {
             addAllResponseMessages(llmResponse, message, existingRequest);
         }
-        return existingRequest;
     }
 
     private ServiceRequest buildServiceRequest(LLMResponse llmResponse, Message message) {
@@ -75,6 +74,9 @@ public class LLMOrchestrationService {
         serviceRequest.setStatus("OPEN");
         serviceRequest.setGuestId(message.getUserId());
         serviceRequest.setRequestUrgency(llmResponse.getActionDetail().getUrgency());
+        UserThread chatThread = new UserThread();
+        chatThread.setThreadId(message.getThreadId());
+        serviceRequest.setUserThread(chatThread);
         return serviceRequest;
     }
 
