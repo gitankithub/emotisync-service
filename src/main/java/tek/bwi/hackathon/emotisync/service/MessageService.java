@@ -2,8 +2,8 @@ package tek.bwi.hackathon.emotisync.service;
 
 import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.entities.Message;
-import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
 import tek.bwi.hackathon.emotisync.entities.UserThread;
+import tek.bwi.hackathon.emotisync.models.UserRole;
 import tek.bwi.hackathon.emotisync.repository.MessageRepository;
 import tek.bwi.hackathon.emotisync.repository.ThreadRepository;
 
@@ -27,7 +27,7 @@ public class MessageService {
     public Message create(Message msg) {
         List<Message> chatHistory = populateChatHistory(msg);
 
-        if ("GUEST".equalsIgnoreCase(msg.getUserRole())) {
+        if (UserRole.GUEST.equals(msg.getCreatedBy())) {
             if (msg.getThreadId() != null && !msg.getThreadId().isBlank()) {
                 Message savedMsg = messageRepo.save(msg);
                 llmService.processGuestMessage(msg, chatHistory);
@@ -36,10 +36,12 @@ public class MessageService {
                 // First interaction, no thread: create thread, save message, then process LLM
                 msg.setTime(Instant.now().toString());
                 msg.setThreadId(UUID.randomUUID().toString());
+                msg.setCreatedBy(UserRole.GUEST);
+                msg.setVisibility(List.of(UserRole.GUEST));
                 llmService.processGuestMessage(msg, chatHistory);
                 return messageRepo.save(msg);
             }
-        } else if ("STAFF".equalsIgnoreCase(msg.getUserRole()) || "ADMIN".equalsIgnoreCase(msg.getUserRole())) {
+        } else if (UserRole.STAFF.equals(msg.getCreatedBy()) || UserRole.ADMIN.equals(msg.getCreatedBy())) {
             Message savedMsg = messageRepo.save(msg);
             llmService.processAdminStaffMessage(savedMsg, chatHistory);
             return savedMsg;

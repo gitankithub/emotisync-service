@@ -18,7 +18,7 @@ public class LLMResponse {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class ActionDetail {
-        private String type;              // e.g. "escalate", "createServiceRequest", "closeRequest"
+        private ActionDetailEnum type;     // e.g. "escalate", "createServiceRequest", "completed", "closeRequest"
         private String targetUserRole;    // e.g. "staff", "admin"
         private String title;             // e.g. "Escalate Room Cleaning"
         private String description;       // e.g. "Guest has complained twice"

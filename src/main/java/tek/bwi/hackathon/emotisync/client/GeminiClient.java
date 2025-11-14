@@ -33,7 +33,7 @@ public class GeminiClient {
         this.apiKey = apiKey;
     }
 
-    public LLMResponse sendPrompt(String payload) {
+    public <T> T sendPrompt(String payload, Class<T> responseType) {
         Mono<String> responseMono = webClient.post()
                 .uri(uriBuilder -> uriBuilder
                         .path(endpointPath)
@@ -68,7 +68,7 @@ public class GeminiClient {
                 llmJsonText = llmJsonText.substring(llmJsonText.indexOf('\n') + 1).trim();
             }
             log.info("Extracted LLM JSON Text: {}", llmJsonText);
-            return objectMapper.readValue(llmJsonText, LLMResponse.class);
+            return objectMapper.readValue(llmJsonText, responseType);
 
         } catch (Exception ex) {
             log.error("Error parsing Gemini LLM response: body=[{}]", responseBody, ex);

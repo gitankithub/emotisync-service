@@ -44,7 +44,7 @@ public class PromptBuilderService {
                   "responseForAdmin": "Response or escalation instruction for admin, if needed",
                   "actionNeeded": true/false,
                   "actionDetail": {
-                    "type": "...",           // e.g. "escalate", "createServiceRequest", "closeRequest"
+                    "type": "...",           // e.g. "ESCALATE",  "CREATE_SERVICE_REQUEST",  "COMPLETED", "CLOSE_REQUEST"
                     "targetUserRole": "...", // e.g. "staff", "admin"
                     "escalationTarget": "serviceRequest|thread|both",
                     "title": "...",
@@ -84,7 +84,7 @@ public class PromptBuilderService {
                     "responseForAdmin": "Response or escalation instruction for admin, if needed",
                     "actionNeeded": true/false,
                     "actionDetail": {
-                      "type": "...",
+                      "type": "...",          // e.g. "ESCALATE",  "CREATE_SERVICE_REQUEST",  "COMPLETED", "CLOSE_REQUEST"
                       "targetUserRole": "...",
                       "description": "...",
                       "urgency": "routine|urgent|escalated"

@@ -6,11 +6,15 @@ import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.entities.Message;
 import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
 import tek.bwi.hackathon.emotisync.entities.UserThread;
+import tek.bwi.hackathon.emotisync.models.ActionDetailEnum;
 import tek.bwi.hackathon.emotisync.models.LLMResponse;
+import tek.bwi.hackathon.emotisync.models.ServiceRequestStatus;
+import tek.bwi.hackathon.emotisync.models.UserRole;
 import tek.bwi.hackathon.emotisync.repository.MessageRepository;
 import tek.bwi.hackathon.emotisync.repository.RequestRepository;
 
 import java.time.Instant;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -34,9 +38,9 @@ public class LLMOrchestrationService {
         ServiceRequest existingRequest = requestRepository.findByUserThread_ThreadId(message.getThreadId());
         log.info("Existing Service Request: {}", existingRequest);
         if (llmResponse.isActionNeeded() && llmResponse.getActionDetail() != null) {
-            String actionType = llmResponse.getActionDetail().getType();
-            switch (actionType.toLowerCase()) {
-                case "createservicerequest":
+            ActionDetailEnum actionType = llmResponse.getActionDetail().getType();
+            switch (actionType) {
+                case CREATE_SERVICE_REQUEST:
                     if (existingRequest != null) {
                         log.info("ServiceRequest already exists for threadId={}", message.getThreadId());
                         addAllResponseMessages(llmResponse, message, existingRequest);
@@ -47,15 +51,18 @@ public class LLMOrchestrationService {
                     addAllResponseMessages(llmResponse, message, newRequest);
                     break;
 
-                case "escalate":
+                case ESCALATE:
                     if (existingRequest != null)
-                        serviceRequestService.updateStatus(existingRequest.getRequestId(), "ESCALATED");
+                        serviceRequestService.updateStatus(existingRequest.getRequestId(), String.valueOf(ServiceRequestStatus.ESCALATED));
                     addAllResponseMessages(llmResponse, message, existingRequest);
                     break;
 
-                case "closerequest":
-                    if (existingRequest != null)
-                        serviceRequestService.updateStatus(existingRequest.getRequestId(), "CLOSED");
+                case COMPLETED, CLOSE_REQUEST:
+                    if (existingRequest != null) {
+                        ServiceRequestStatus status = actionType == ActionDetailEnum.COMPLETED ?
+                                ServiceRequestStatus.COMPLETED : ServiceRequestStatus.CLOSED;
+                        serviceRequestService.updateStatus(existingRequest.getRequestId(), String.valueOf(status));
+                    }
                     addAllResponseMessages(llmResponse, message, existingRequest);
                     break;
 
@@ -71,7 +78,7 @@ public class LLMOrchestrationService {
         ServiceRequest serviceRequest = new ServiceRequest();
         serviceRequest.setRequestTitle(llmResponse.getActionDetail().getTitle());
         serviceRequest.setRequestDescription(llmResponse.getActionDetail().getDescription());
-        serviceRequest.setStatus("OPEN");
+        serviceRequest.setStatus(ServiceRequestStatus.OPEN);
         serviceRequest.setGuestId(message.getUserId());
         serviceRequest.setRequestUrgency(llmResponse.getActionDetail().getUrgency());
         UserThread chatThread = new UserThread();
@@ -89,7 +96,8 @@ public class LLMOrchestrationService {
             guestMsg.setUserId(originalMsg.getUserId());
             guestMsg.setThreadId(request.getUserThread().getThreadId());
             guestMsg.setContent(llmResponse.getResponseForGuest());
-            guestMsg.setUserRole("GUEST");
+            guestMsg.setCreatedBy(UserRole.ASSISTANT);
+            guestMsg.setVisibility(List.of(UserRole.STAFF, UserRole.ADMIN));
             guestMsg.setTime(Instant.now().toString());
             messageRepository.save(guestMsg);
         }
@@ -98,7 +106,8 @@ public class LLMOrchestrationService {
             staffMsg.setUserId(request.getAssignedTo());
             staffMsg.setThreadId(request.getUserThread().getThreadId());
             staffMsg.setContent(llmResponse.getResponseForStaff());
-            staffMsg.setUserRole("STAFF");
+            staffMsg.setCreatedBy(UserRole.ASSISTANT);
+            staffMsg.setVisibility(List.of(UserRole.STAFF, UserRole.ADMIN));
             staffMsg.setTime(Instant.now().toString());
             messageRepository.save(staffMsg);
         }
@@ -110,7 +119,8 @@ public class LLMOrchestrationService {
                     .ifPresent(participant -> adminMsg.setUserId(participant.getId()));
             adminMsg.setThreadId(request.getUserThread().getThreadId());
             adminMsg.setContent(llmResponse.getResponseForAdmin());
-            adminMsg.setUserRole("ADMIN");
+            adminMsg.setCreatedBy(UserRole.ASSISTANT);
+            adminMsg.setVisibility(List.of(UserRole.ADMIN));
             adminMsg.setTime(Instant.now().toString());
             messageRepository.save(adminMsg);
         }
