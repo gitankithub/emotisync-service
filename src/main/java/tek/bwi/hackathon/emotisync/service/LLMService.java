@@ -52,7 +52,7 @@ public class LLMService {
             ));
             String payload = objectMapper.writeValueAsString(llmRequest);
             log.info("LLM Request Payload: {}", payload);
-            LLMResponse llmResponse = geminiClient.sendPrompt(payload);
+            LLMResponse llmResponse = geminiClient.sendPrompt(payload, LLMResponse.class);
             log.info("LLM Response: {}", llmResponse);
             llmOrchestrationService.handleLLMResponse(llmResponse, message);
         } catch (Exception e) {
@@ -79,7 +79,7 @@ public class LLMService {
                     new LLMPayload(List.of(new PayloadPart(prompt)))
             ));
             String payload = objectMapper.writeValueAsString(geminiRequest);
-            LLMResponse llmResponse = geminiClient.sendPrompt(payload);
+            LLMResponse llmResponse = geminiClient.sendPrompt(payload, LLMResponse.class);
             llmOrchestrationService. handleLLMResponse(llmResponse, message);
         } catch (Exception e) {
             throw new RuntimeException(e);

@@ -1,24 +1,26 @@
 package tek.bwi.hackathon.emotisync.entities;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import tek.bwi.hackathon.emotisync.models.UserRole;
 
+import java.time.Instant;
 import java.util.List;
 
 @Data
 @NoArgsConstructor
-@Document(collection = "messages")
-public class Message {
+@AllArgsConstructor
+@Document(collection = "chatMessages")
+public class ChatMessage {
     @Id
-    private String messageId;
-    private String threadId;
-    private String userId;
-    private UserRole createdBy;
+    private String id;
+    private String chatRequestId;
+    private UserRole senderRole;
     private List<UserRole> visibility;
-    private String content;
-    private GuestFeedback guestFeedback;
-    private String time;
+    private String message;
+    private String status;
+    private Instant timestamp;
 }

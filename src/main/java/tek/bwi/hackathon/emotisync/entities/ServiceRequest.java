@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import tek.bwi.hackathon.emotisync.models.ServiceRequestStatus;
 
 @Data
 @NoArgsConstructor
@@ -19,7 +20,7 @@ public class ServiceRequest {
     private String requestUrgency;
     private String assignedTo;
     private String guestId;
-    private String status;
+    private ServiceRequestStatus status;
     @DBRef
     private UserThread userThread;
     private String createdAt;

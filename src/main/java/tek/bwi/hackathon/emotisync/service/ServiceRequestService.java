@@ -5,6 +5,7 @@ import tek.bwi.hackathon.emotisync.entities.Reservation;
 import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
 import tek.bwi.hackathon.emotisync.entities.UserInfo;
 import tek.bwi.hackathon.emotisync.entities.UserThread;
+import tek.bwi.hackathon.emotisync.models.ServiceRequestStatus;
 import tek.bwi.hackathon.emotisync.models.ThreadParticipant;
 import tek.bwi.hackathon.emotisync.repository.RequestRepository;
 import tek.bwi.hackathon.emotisync.repository.ThreadRepository;
@@ -30,11 +31,11 @@ public class ServiceRequestService {
         // Set basic fields (requestId auto-assigned with save)
         String reqId = UUID.randomUUID().toString();
         request.setRequestId(reqId);
-        request.setStatus("OPEN");
+        request.setStatus(ServiceRequestStatus.OPEN);
         request.setCreatedAt(Instant.now().toString());
         request.setUpdatedAt(Instant.now().toString());
         UserThread chatThread = request.getUserThread();
-        chatThread.setStatus("OPEN");
+        chatThread.setStatus(ServiceRequestStatus.OPEN);
         chatThread.setCreatedAt(Instant.now().toString());
         chatThread.setRequestId(reqId);
         assignStaffToRequest(request, chatThread);
@@ -63,12 +64,12 @@ public class ServiceRequestService {
         if (availList != null && !availList.isEmpty()) {
             String assignedStaffId = availList.get(0).getUserId();
             request.setAssignedTo(assignedStaffId);
-            request.setStatus("ASSIGNED");
-            chatThread.setStatus("ASSIGNED");
+            request.setStatus(ServiceRequestStatus.ASSIGNED);
+            chatThread.setStatus(ServiceRequestStatus.ASSIGNED);
         } else {
             request.setAssignedTo(null);
-            request.setStatus("OPEN");
-            chatThread.setStatus("OPEN");
+            request.setStatus(ServiceRequestStatus.OPEN);
+            chatThread.setStatus(ServiceRequestStatus.OPEN);
         }
     }
     public List<ServiceRequest> getAll() {
@@ -88,10 +89,10 @@ public class ServiceRequestService {
         if (req == null) {
             throw new IllegalArgumentException("ServiceRequest not found with id: " + id);
         }
-        req.setStatus(status);
+        req.setStatus(ServiceRequestStatus.valueOf(status));
         req.setUpdatedAt(Instant.now().toString());
         if (req.getUserThread() != null) {
-            req.getUserThread().setStatus(status);
+            req.getUserThread().setStatus(ServiceRequestStatus.valueOf(status));
         }
         return requestRepo.save(req);
     }

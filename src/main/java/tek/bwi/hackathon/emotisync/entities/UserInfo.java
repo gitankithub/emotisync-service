@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import tek.bwi.hackathon.emotisync.models.UserRole;
 
 @Data
 @NoArgsConstructor
@@ -13,6 +14,6 @@ public class UserInfo {
     private String userId;
     private String email;
     private String name;
-    private String role; // GUEST, STAFF, ADMIN
+    private UserRole role;
 }
 
