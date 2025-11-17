@@ -1,6 +1,7 @@
 package tek.bwi.hackathon.emotisync.service;
 
 import org.springframework.stereotype.Service;
+import tek.bwi.hackathon.emotisync.entities.Reservation;
 import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
 import tek.bwi.hackathon.emotisync.entities.UserInfo;
 import tek.bwi.hackathon.emotisync.entities.UserThread;
@@ -70,6 +71,9 @@ public class ServiceRequestService {
             request.setStatus(ServiceRequestStatus.OPEN);
             chatThread.setStatus(ServiceRequestStatus.OPEN);
         }
+    }
+    public List<ServiceRequest> getAll() {
+        return requestRepo.findAll();
     }
 
     public List<ServiceRequest> getByGuestId(String guestId) {
