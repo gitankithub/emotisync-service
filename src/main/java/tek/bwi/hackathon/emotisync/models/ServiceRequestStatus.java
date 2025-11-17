@@ -5,11 +5,11 @@ import lombok.Getter;
 @Getter
 public enum ServiceRequestStatus {
     OPEN("Open", "The request is created and waiting for action."),
+    ASSIGNED("Assigned", "The request has been assigned to a staff member for action."),
     IN_PROGRESS("In_Progress", "The request is being worked on by staff."),
-    COMPLETED("Completed", "The request is finished and resolved."),
-    CLOSED("Closed", "The request is closed; no further action will be taken."),
     ESCALATED("Escalated", "The request has been escalated to higher-level for attention."),
-    ASSIGNED("Assigned", "The request has been assigned to a staff member for action.");
+    COMPLETED("Completed", "The request is finished and resolved."),
+    CLOSED("Closed", "The request is closed; no further action will be taken.");
 
     private final String code;
     private final String description;

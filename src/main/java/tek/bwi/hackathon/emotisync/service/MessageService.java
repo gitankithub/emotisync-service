@@ -31,7 +31,7 @@ public class MessageService {
             if (msg.getThreadId() != null && !msg.getThreadId().isBlank()) {
                 Message savedMsg = messageRepo.save(msg);
                 msg.setCreatedBy(UserRole.GUEST);
-                msg.setVisibility(List.of(UserRole.GUEST));
+                msg.setVisibility(List.of(UserRole.GUEST, UserRole.ADMIN));
                 llmService.processGuestMessage(msg, chatHistory);
                 return savedMsg;
             } else {
@@ -39,13 +39,13 @@ public class MessageService {
                 msg.setTime(Instant.now().toString());
                 msg.setThreadId(UUID.randomUUID().toString());
                 msg.setCreatedBy(UserRole.GUEST);
-                msg.setVisibility(List.of(UserRole.GUEST));
+                msg.setVisibility(List.of(UserRole.GUEST, UserRole.ADMIN));
                 llmService.processGuestMessage(msg, chatHistory);
                 return messageRepo.save(msg);
             }
         } else if (UserRole.STAFF.equals(msg.getCreatedBy()) || UserRole.ADMIN.equals(msg.getCreatedBy())) {
             msg.setTime(Instant.now().toString());
-            msg.setVisibility(List.of(msg.getCreatedBy()));
+            msg.setVisibility(List.of(UserRole.STAFF, UserRole.ADMIN));
             Message savedMsg = messageRepo.save(msg);
             llmService.processAdminStaffMessage(savedMsg, chatHistory);
             return savedMsg;

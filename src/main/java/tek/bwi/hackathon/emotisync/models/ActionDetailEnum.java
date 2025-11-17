@@ -1,5 +1,6 @@
 package tek.bwi.hackathon.emotisync.models;
 
+import com.fasterxml.jackson.annotation.JsonEnumDefaultValue;
 import lombok.Getter;
 
 @Getter
@@ -7,7 +8,10 @@ public enum ActionDetailEnum {
     ESCALATE("ESCALATE"),
     CREATE_SERVICE_REQUEST("CREATE_SERVICE_REQUEST"),
     COMPLETED("COMPLETED"),
-    CLOSE_REQUEST("CLOSE_REQUEST");
+    UPDATE_SERVICE_REQUEST("UPDATE_SERVICE_REQUEST"),
+    CLOSE_REQUEST("CLOSE_REQUEST"),
+    @JsonEnumDefaultValue
+    OTHER("OTHER");
 
     private final String action;
 

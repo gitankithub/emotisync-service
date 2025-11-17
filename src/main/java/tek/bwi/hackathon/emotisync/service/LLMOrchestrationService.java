@@ -51,6 +51,12 @@ public class LLMOrchestrationService {
                     addAllResponseMessages(llmResponse, message, newRequest);
                     break;
 
+                case UPDATE_SERVICE_REQUEST:
+                    if (existingRequest != null)
+                        serviceRequestService.updateStatus(existingRequest.getRequestId(), String.valueOf(ServiceRequestStatus.IN_PROGRESS));
+                    addAllResponseMessages(llmResponse, message, existingRequest);
+                    break;
+
                 case ESCALATE:
                     if (existingRequest != null)
                         serviceRequestService.updateStatus(existingRequest.getRequestId(), String.valueOf(ServiceRequestStatus.ESCALATED));
