@@ -28,5 +28,9 @@ public class UserController {
     public List<UserInfo> getByRole(@PathVariable String role) {
         return service.getByRole(role);
     }
+    @GetMapping("/email/{emailId}")
+    public List<UserInfo> getByEmail(@PathVariable String emailId) {
+        return service.getByEmail(emailId);
+    }
 }
 

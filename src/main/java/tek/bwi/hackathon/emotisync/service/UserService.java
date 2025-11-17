@@ -28,5 +28,8 @@ public class UserService {
     public List<UserInfo> getByRole(String role) {
         return repo.findByRole(role);
     }
+    public List<UserInfo> getByEmail(String emailId) {
+        return repo.findByEmail(emailId);
+    }
 }
 
