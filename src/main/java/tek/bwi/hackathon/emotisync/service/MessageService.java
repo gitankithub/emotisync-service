@@ -51,7 +51,10 @@ public class MessageService {
     }
 
 
-    public List<Message> getByThreadId(String threadId) { return messageRepo.findByThreadIdOrderByTimeAsc(threadId); }
+    public List<Message> getByThreadId(String threadId, String userId, String userType) {
+        List<Message> userMessages = messageRepo.findByThreadIdAndUserIdOrderByTimeAsc(threadId, userId);
+        return userMessages.stream().filter(msg -> msg.getVisibility().contains(UserRole.valueOf(userType))).toList();
+    }
     public Message getById(String id) { return messageRepo.findById(id).orElse(null); }
     private List<Message> populateChatHistory(Message message) {
         UserThread thread = threadRepository.findByThreadIdAndStatus(message.getThreadId(), "OPEN");

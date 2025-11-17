@@ -23,7 +23,7 @@ public class UserService {
         return repo.findAll();
     }
     public UserInfo getById(String UserInfoId) {
-        return repo.findById(UserInfoId).orElse(null);
+        return repo.findById(UserInfoId).orElseThrow(()->new RuntimeException("Not found"));
     }
     public List<UserInfo> getByRole(String role) {
         return repo.findByRole(role);

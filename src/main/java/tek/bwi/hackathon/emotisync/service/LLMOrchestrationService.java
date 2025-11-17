@@ -97,7 +97,7 @@ public class LLMOrchestrationService {
             guestMsg.setThreadId(request.getUserThread().getThreadId());
             guestMsg.setContent(llmResponse.getResponseForGuest());
             guestMsg.setCreatedBy(UserRole.ASSISTANT);
-            guestMsg.setVisibility(List.of(UserRole.STAFF, UserRole.ADMIN));
+            guestMsg.setVisibility(List.of(UserRole.GUEST, UserRole.ADMIN));
             guestMsg.setTime(Instant.now().toString());
             messageRepository.save(guestMsg);
         }

@@ -20,7 +20,8 @@ public class MessageController {
         }
     }
     @GetMapping("/thread/{threadId}")
-    public List<Message> getByThreadId(@PathVariable String threadId) { return service.getByThreadId(threadId); }
+    public List<Message> getByThreadId(@PathVariable String threadId, @RequestParam String userId, @RequestParam String userType) { return service.getByThreadId(threadId, userId, userType); }
+
     @GetMapping("/{id}")
     public Message getById(@PathVariable String id) { return service.getById(id); }
 }
