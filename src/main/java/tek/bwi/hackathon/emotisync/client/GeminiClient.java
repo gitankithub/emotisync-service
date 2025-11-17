@@ -3,14 +3,16 @@ package tek.bwi.hackathon.emotisync.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
-import tek.bwi.hackathon.emotisync.models.LLMResponse;
 
 import java.time.Duration;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
@@ -64,15 +66,37 @@ public class GeminiClient {
             JsonNode root = objectMapper.readTree(responseBody);
             String llmJsonText = root.at("/candidates/0/content/parts/0/text").asText();
             // Remove optional markdown block ticks if present (e.g. ```
-            if (llmJsonText.startsWith("```json")) {
-                llmJsonText = llmJsonText.substring(llmJsonText.indexOf('\n') + 1).trim();
-            }
-            log.info("Extracted LLM JSON Text: {}", llmJsonText);
-            return objectMapper.readValue(llmJsonText, responseType);
+            // Regex to extract JSON block between ```json and ```
+            Pattern pattern = Pattern.compile("```json\\s*(\\{[\\s\\S]*?\\})\\s*```");
+            String extractedJson = getExtractedJson(pattern, llmJsonText);
 
+            if (extractedJson == null) {
+                log.error("Could not extract JSON block from Gemini text response: {}", llmJsonText);
+                throw new RuntimeException("No JSON found in Gemini LLM response");
+            }
+
+            log.info("Extracted cleaned JSON: {}", extractedJson);
+            return objectMapper.readValue(extractedJson, responseType);
         } catch (Exception ex) {
             log.error("Error parsing Gemini LLM response: body=[{}]", responseBody, ex);
             throw new RuntimeException("Error parsing Gemini LLM response", ex);
         }
+    }
+
+    @Nullable
+    private static String getExtractedJson(Pattern pattern, String llmJsonText) {
+        Matcher matcher = pattern.matcher(llmJsonText);
+        String extractedJson = null;
+        if (matcher.find()) {
+            extractedJson = matcher.group(1);
+        } else {
+            // try extracting a bare JSON block (for cases where model omits markdown)
+            int firstBrace = llmJsonText.indexOf('{');
+            int lastBrace = llmJsonText.lastIndexOf('}');
+            if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+                extractedJson = llmJsonText.substring(firstBrace, lastBrace + 1);
+            }
+        }
+        return extractedJson;
     }
 }

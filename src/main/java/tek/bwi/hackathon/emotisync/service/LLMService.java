@@ -90,7 +90,7 @@ public class LLMService {
             ));
             String payload = objectMapper.writeValueAsString(geminiRequest);
             LLMResponse llmResponse = geminiClient.sendPrompt(payload, LLMResponse.class);
-            llmOrchestrationService. handleLLMResponse(llmResponse, message);
+            llmOrchestrationService.handleLLMResponse(llmResponse, message);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
