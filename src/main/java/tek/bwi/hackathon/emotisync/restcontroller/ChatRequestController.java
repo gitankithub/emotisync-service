@@ -30,8 +30,8 @@ public class ChatRequestController {
     }
 
     @GetMapping("/history")
-    public ResponseEntity<List<ChatMessage>> getChatHistory(@RequestParam String threadId) {
-        List<ChatMessage> history = chatRequestService.getChatHistory(threadId);
+    public ResponseEntity<List<ChatMessage>> getChatHistory(@RequestParam String threadId, @RequestParam(required = false) String status){
+        List<ChatMessage> history = chatRequestService.getChatHistory(threadId, status);
         return ResponseEntity.ok(history);
     }
 

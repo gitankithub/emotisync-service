@@ -168,8 +168,8 @@ public class ChatRequestService {
         messageRepo.save(msg);
     }
 
-    public List<ChatMessage> getChatHistory(String chatRequestId) {
-        return chatMessageRepository.findByChatRequestIdOrderByTimestampAsc(chatRequestId);
+    public List<ChatMessage> getChatHistory(String chatRequestId, String status) {
+        return chatMessageRepository.findByChatRequestIdAndStatusOrderByTimestampAsc(chatRequestId, status);
     }
 
     public ChatRequest closeChatRequest(String chatRequestId) {
