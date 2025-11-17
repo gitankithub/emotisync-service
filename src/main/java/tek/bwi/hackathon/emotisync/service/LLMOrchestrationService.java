@@ -99,7 +99,7 @@ public class LLMOrchestrationService {
             ServiceRequest request) {
         if (nonEmpty(llmResponse.getResponseForGuest())) {
             Message guestMsg = new Message();
-            guestMsg.setUserId(originalMsg.getUserId());
+            guestMsg.setUserId(request.getGuestId());
             guestMsg.setThreadId(request.getUserThread().getThreadId());
             guestMsg.setContent(llmResponse.getResponseForGuest());
             guestMsg.setCreatedBy(UserRole.ASSISTANT);
