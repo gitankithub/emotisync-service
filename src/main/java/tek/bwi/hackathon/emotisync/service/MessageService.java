@@ -44,6 +44,8 @@ public class MessageService {
                 return messageRepo.save(msg);
             }
         } else if (UserRole.STAFF.equals(msg.getCreatedBy()) || UserRole.ADMIN.equals(msg.getCreatedBy())) {
+            msg.setTime(Instant.now().toString());
+            msg.setVisibility(List.of(msg.getCreatedBy()));
             Message savedMsg = messageRepo.save(msg);
             llmService.processAdminStaffMessage(savedMsg, chatHistory);
             return savedMsg;
