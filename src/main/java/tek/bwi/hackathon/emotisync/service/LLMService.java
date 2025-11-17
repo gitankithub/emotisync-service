@@ -8,11 +8,13 @@ import tek.bwi.hackathon.emotisync.client.GeminiClient;
 import tek.bwi.hackathon.emotisync.entities.Message;
 import tek.bwi.hackathon.emotisync.entities.Reservation;
 import tek.bwi.hackathon.emotisync.entities.UserInfo;
+import tek.bwi.hackathon.emotisync.entities.UserThread;
 import tek.bwi.hackathon.emotisync.models.LLMPayload;
 import tek.bwi.hackathon.emotisync.models.PayloadPart;
 import tek.bwi.hackathon.emotisync.models.LLMRequest;
 import tek.bwi.hackathon.emotisync.models.LLMResponse;
 import tek.bwi.hackathon.emotisync.repository.ReservationRepository;
+import tek.bwi.hackathon.emotisync.repository.ThreadRepository;
 
 import java.util.List;
 import java.util.Objects;
@@ -27,15 +29,17 @@ public class LLMService {
     private final UserService userService;
     private final ReservationRepository reservationRepository;
     private final LLMOrchestrationService llmOrchestrationService;
+    private final ThreadRepository threadRepository;
 
     @Autowired
-    public LLMService(ObjectMapper objectMapper, PromptBuilderService promptBuilder, GeminiClient geminiClient, UserService userService, ReservationRepository reservationRepository, LLMOrchestrationService llmOrchestrationService) {
+    public LLMService(ObjectMapper objectMapper, PromptBuilderService promptBuilder, GeminiClient geminiClient, UserService userService, ReservationRepository reservationRepository, LLMOrchestrationService llmOrchestrationService, ThreadRepository threadRepository) {
         this.objectMapper = objectMapper;
         this.promptBuilder = promptBuilder;
         this.geminiClient = geminiClient;
         this.userService = userService;
         this.reservationRepository = reservationRepository;
         this.llmOrchestrationService = llmOrchestrationService;
+        this.threadRepository = threadRepository;
     }
 
     public void processGuestMessage(Message message, List<Message> chatHistory) {
@@ -65,7 +69,13 @@ public class LLMService {
             log.info("Processing staff message: {}", message);
             UserInfo userInfo = userService.getById(message.getUserId());
             log.info("Fetched User id: {}", userInfo != null ? userInfo.getUserId() : "null");
-            Reservation reservation = reservationRepository.findByGuestIdAndStatus(message.getUserId(), "CHECKED_IN");
+            UserThread userThread = threadRepository.findByThreadId(message.getThreadId());
+            UserInfo guestInfo = userThread.getParticipantIds().stream()
+                    .filter(participant -> participant.getRole().equals("GUEST"))
+                    .findFirst()
+                    .map(participant -> userService.getById(participant.getId()))
+                    .orElse(null);
+            Reservation reservation = reservationRepository.findByGuestIdAndStatus(Objects.requireNonNull(guestInfo).getUserId(), "CHECKED_IN");
             log.info("Fetched Reservation id: {}", reservation != null ? reservation.getId() : "null");
             String prompt = promptBuilder.buildStaffPrompt(
                     message,

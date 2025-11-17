@@ -1,5 +1,5 @@
 package tek.bwi.hackathon.emotisync.client;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -10,6 +10,7 @@ import tek.bwi.hackathon.emotisync.models.gemini.GeminiEmbeddingResponse;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class GeminiEmbeddingClient {
     private final WebClient webClient;
@@ -33,6 +34,7 @@ public class GeminiEmbeddingClient {
         var requestBody = new EmbeddingRequest(
                 new EmbeddingContent(List.of(new EmbeddingPart(text)))
         );
+        log.info("Sending embedding request to Gemini for text: {}", requestBody);
 
         GeminiEmbeddingResponse response = webClient.post()
                 .uri(uriBuilder -> uriBuilder
@@ -44,9 +46,9 @@ public class GeminiEmbeddingClient {
                 .retrieve()
                 .bodyToMono(GeminiEmbeddingResponse.class)
                 .block();
-
+        log.info("Received embedding response from Gemini: {}", response);
         if (response != null && response.getEmbedding() != null) {
-            return response.getEmbedding();
+            return response.getEmbedding().getValues();
         } else {
             throw new RuntimeException("Failed to get embedding from Gemini");
         }

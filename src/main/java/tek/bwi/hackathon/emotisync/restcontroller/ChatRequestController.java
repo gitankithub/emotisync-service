@@ -1,5 +1,6 @@
 package tek.bwi.hackathon.emotisync.restcontroller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tek.bwi.hackathon.emotisync.entities.ChatMessage;
@@ -9,6 +10,7 @@ import tek.bwi.hackathon.emotisync.service.ChatRequestService;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/chatQueries")
 public class ChatRequestController {
@@ -23,8 +25,9 @@ public class ChatRequestController {
     public ResponseEntity<ChatResponse> sendChatMessage(
             @RequestParam(required = false) String chatRequestId,
             @RequestParam String guestId,
-            @RequestBody String message
+            @RequestBody ChatMessage message
     ) {
+        log.info("Received chat message: {}", message);
         ChatRequest session = chatRequestService.ensureChatRequestSession(chatRequestId, guestId);
         return ResponseEntity.ok(chatRequestService.handleChatQuery(session.getId(), guestId, message));
     }

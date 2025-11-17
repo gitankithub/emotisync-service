@@ -73,22 +73,23 @@ public class ChatRequestService {
     }
 
     // Handles chat, matching, LLM, staff messages
-    public ChatResponse handleChatQuery(String adhocSessionId, String guestId, String chatQuery) {
-        ChatRequest chatRequest = ensureChatRequestSession(adhocSessionId, guestId);
-
+    public ChatResponse handleChatQuery(String chatRequestId, String guestId, ChatMessage chatQuery) {
+        ChatRequest chatRequest = ensureChatRequestSession(chatRequestId, guestId);
+        log.info("Handling chat query for session {}: {}", chatRequest.getId(), chatQuery);
         ChatMessage guestMsg = new ChatMessage();
         guestMsg.setChatRequestId(chatRequest.getId());
         guestMsg.setSenderRole(UserRole.GUEST);
         guestMsg.setVisibility(List.of(UserRole.GUEST));
-        guestMsg.setMessage(chatQuery);
+        guestMsg.setMessage(chatQuery.getMessage());
         guestMsg.setTimestamp(Instant.now());
         chatMessageRepository.save(guestMsg);
 
         // Find ServiceRequest match
         List<ServiceRequest> activeRequests = requestRepo.findByGuestIdAndStatus(
                 guestId, List.of("OPEN", "ASSIGNED", "IN_PROGRESS", "ESCALATED"));
-        List<Float> queryEmbedding = embeddingClient.embedText(chatQuery);
-
+        log.info("Found {} active requests for guest {}", activeRequests.size(), guestId);
+        List<Float> queryEmbedding = embeddingClient.embedText(chatQuery.getMessage());
+        log.info("Query embedding: {}", queryEmbedding);
         ServiceRequest bestMatch = null;
         double bestScore = 0;
         for (ServiceRequest sr : activeRequests) {
@@ -100,7 +101,8 @@ public class ChatRequestService {
                 bestMatch = sr;
             }
         }
-        String prompt = getString(chatQuery, bestMatch, bestScore);
+        String prompt = getString(chatQuery.getMessage(), bestMatch, bestScore);
+        log.info("Best match score: {}, prompt to LLM: {}", bestScore, prompt);
         ChatServiceLLMResponse llmResponse = geminiClient.sendPrompt(prompt, ChatServiceLLMResponse.class);
         log.info("LLM Response: {}", llmResponse);
 

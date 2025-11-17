@@ -9,7 +9,6 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class GeminiEmbeddingResponse {
-    private Embedding embedding;
+public class Embedding {
+    private List<Float> values;
 }
-
