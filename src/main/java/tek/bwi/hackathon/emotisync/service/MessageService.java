@@ -30,6 +30,8 @@ public class MessageService {
         if (UserRole.GUEST.equals(msg.getCreatedBy())) {
             if (msg.getThreadId() != null && !msg.getThreadId().isBlank()) {
                 Message savedMsg = messageRepo.save(msg);
+                msg.setCreatedBy(UserRole.GUEST);
+                msg.setVisibility(List.of(UserRole.GUEST));
                 llmService.processGuestMessage(msg, chatHistory);
                 return savedMsg;
             } else {
