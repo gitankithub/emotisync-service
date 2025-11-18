@@ -56,7 +56,12 @@ public class MessageService {
 
 
     public List<Message> getByThreadId(String threadId, String userId, String userType) {
-        List<Message> userMessages = messageRepo.findByThreadIdAndUserIdOrderByTimeAsc(threadId, userId);
+        List<Message> userMessages;
+        if(userId != null && !userId.isBlank()) {
+            userMessages = messageRepo.findByThreadIdAndUserIdOrderByTimeAsc(threadId, userId);
+        } else {
+           userMessages = messageRepo.findByThreadIdOrderByTimeAsc(threadId);
+        }
         return userMessages.stream().filter(msg -> msg.getVisibility().contains(UserRole.valueOf(userType))).toList();
     }
     public Message getById(String id) { return messageRepo.findById(id).orElse(null); }
