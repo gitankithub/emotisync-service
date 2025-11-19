@@ -62,7 +62,7 @@ public class MessageService {
         } else {
            userMessages = messageRepo.findByThreadIdOrderByTimeAsc(threadId);
         }
-        return userMessages.stream().filter(msg -> msg.getVisibility().contains(UserRole.valueOf(userType))).toList();
+        return userMessages.stream().filter(msg -> msg.getVisibility() != null && msg.getVisibility().contains(UserRole.valueOf(userType))).toList();
     }
     public Message getById(String id) { return messageRepo.findById(id).orElse(null); }
     private List<Message> populateChatHistory(Message message) {

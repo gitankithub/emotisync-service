@@ -16,7 +16,7 @@ import java.util.List;
 public class ChatRequest {
     @Id
     private String id;
-    private String guestId;
+    private String senderId;
     private String status; // e.g. ACTIVE, CLOSED
     private Instant createdAt;
     private Instant updatedAt;

@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ChatServiceLLMResponse {
     private String action;
-    private String reply;
+    private String replyToGuest;
+    private String replyToStaff;
+    private String replyToAdmin;
     private boolean shouldClose;
     private String reason;
 }

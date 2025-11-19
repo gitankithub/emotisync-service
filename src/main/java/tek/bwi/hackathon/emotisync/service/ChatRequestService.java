@@ -1,52 +1,51 @@
 package tek.bwi.hackathon.emotisync.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.client.GeminiClient;
 import tek.bwi.hackathon.emotisync.client.GeminiEmbeddingClient;
+import tek.bwi.hackathon.emotisync.entities.*;
 import tek.bwi.hackathon.emotisync.entities.ChatMessage;
-import tek.bwi.hackathon.emotisync.entities.ChatRequest;
-import tek.bwi.hackathon.emotisync.entities.Message;
-import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
-import tek.bwi.hackathon.emotisync.models.ChatResponse;
-import tek.bwi.hackathon.emotisync.models.ServiceRequestStatus;
-import tek.bwi.hackathon.emotisync.models.UserRole;
+import tek.bwi.hackathon.emotisync.models.*;
 import tek.bwi.hackathon.emotisync.models.gemini.ChatServiceLLMResponse;
-import tek.bwi.hackathon.emotisync.repository.ChatMessageRepository;
-import tek.bwi.hackathon.emotisync.repository.ChatRequestRepository;
-import tek.bwi.hackathon.emotisync.repository.MessageRepository;
-import tek.bwi.hackathon.emotisync.repository.RequestRepository;
+import tek.bwi.hackathon.emotisync.repository.*;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
 public class ChatRequestService {
 
+    private final ObjectMapper objectMapper;
     private final RequestRepository requestRepo;
     private final MessageRepository messageRepo;
     private final ChatRequestRepository chatRequestRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final ReservationRepository reservationRepository;
     private final GeminiEmbeddingClient embeddingClient;
     private final GeminiClient geminiClient;
-    
-    public ChatRequestService(RequestRepository requestRepo,
-                                MessageRepository messageRepo,
-                                ChatRequestRepository chatRequestRepository,
-                                ChatMessageRepository chatMessageRepository,
-                                GeminiEmbeddingClient embeddingClient,
-                                GeminiClient geminiClient) {
+    private final UserService userService;
+
+    public ChatRequestService(ObjectMapper objectMapper, RequestRepository requestRepo,
+                              MessageRepository messageRepo,
+                              ChatRequestRepository chatRequestRepository,
+                              ChatMessageRepository chatMessageRepository,
+                              ReservationRepository reservationRepository, GeminiEmbeddingClient embeddingClient,
+                              GeminiClient geminiClient, UserService userService) {
+        this.objectMapper = objectMapper;
         this.requestRepo = requestRepo;
         this.messageRepo = messageRepo;
         this.chatRequestRepository = chatRequestRepository;
         this.chatMessageRepository = chatMessageRepository;
+        this.reservationRepository = reservationRepository;
         this.embeddingClient = embeddingClient;
         this.geminiClient = geminiClient;
+        this.userService = userService;
     }
-
-
-
 
     private double cosineSimilarity(List<Float> v1, List<Float> v2) {
         double dot = 0, norm1 = 0, norm2 = 0;
@@ -59,81 +58,81 @@ public class ChatRequestService {
     }
 
     // Create new session for new chat or return existing session for reply
-    public ChatRequest ensureChatRequestSession(String chatSessionId, String guestId) {
-        if (chatSessionId == null) {
-            ChatRequest session = new ChatRequest();
-            session.setGuestId(guestId);
-            session.setCreatedAt(Instant.now());
-            session.setUpdatedAt(Instant.now());
-            session.setStatus("ACTIVE");
-            return chatRequestRepository.save(session);
+    public ChatRequest ensureChatRequestSession(String chatRequestId, String senderId) {
+        if (chatRequestId == null) {
+            ChatRequest chatRequest = new ChatRequest();
+            chatRequest.setId(UUID.randomUUID().toString());
+            chatRequest.setSenderId(senderId);
+            chatRequest.setCreatedAt(Instant.now());
+            chatRequest.setUpdatedAt(Instant.now());
+            chatRequest.setStatus("ACTIVE");
+            return chatRequest;
         } else {
-            return chatRequestRepository.findById(chatSessionId).orElseThrow();
+            return chatRequestRepository.findById(chatRequestId).orElseThrow();
         }
     }
 
     // Handles chat, matching, LLM, staff messages
-    public ChatResponse handleChatQuery(String chatRequestId, String guestId, ChatMessage chatQuery) {
-        ChatRequest chatRequest = ensureChatRequestSession(chatRequestId, guestId);
-        log.info("Handling chat query for session {}: {}", chatRequest.getId(), chatQuery);
-        ChatMessage guestMsg = new ChatMessage();
-        guestMsg.setChatRequestId(chatRequest.getId());
-        guestMsg.setSenderRole(UserRole.GUEST);
-        guestMsg.setVisibility(List.of(UserRole.GUEST));
-        guestMsg.setMessage(chatQuery.getMessage());
-        guestMsg.setTimestamp(Instant.now());
-        chatMessageRepository.save(guestMsg);
-
+    public ChatResponse handleChatQuery(ChatMessage message) throws JsonProcessingException {
+        ChatRequest chatRequest = ensureChatRequestSession(message.getChatRequestId(), message.getSenderId());
+        log.info("Handling chat query for session {}: {}", chatRequest.getId(), message);
         // Find ServiceRequest match
-        List<ServiceRequest> activeRequests = requestRepo.findByGuestIdAndStatus(
-                guestId, List.of("OPEN", "ASSIGNED", "IN_PROGRESS", "ESCALATED"));
-        log.info("Found {} active requests for guest {}", activeRequests.size(), guestId);
-        List<Float> queryEmbedding = embeddingClient.embedText(chatQuery.getMessage());
-        log.info("Query embedding: {}", queryEmbedding);
+        List<ServiceRequest> activeRequests = requestRepo.findByGuestIdAndStatusIn(
+                message.getSenderId(), List.of("OPEN", "ASSIGNED", "IN_PROGRESS", "ESCALATED"));
+        log.info("Found {} active requests for guest {}", activeRequests.size(), message.getSenderId());
+        List<Float> queryEmbedding = embeddingClient.embedText(message.getMessage());
         ServiceRequest bestMatch = null;
         double bestScore = 0;
         for (ServiceRequest sr : activeRequests) {
-            String embText = sr.getRequestTitle() + " " + (sr.getRequestDescription() != null ? sr.getRequestDescription() : "");
-            List<Float> srEmbedding = embeddingClient.embedText(embText);
+            List<Float> srEmbedding = embeddingClient.embedText(sr.getRequestTitle());
             double score = cosineSimilarity(queryEmbedding, srEmbedding);
             if (score > bestScore) {
                 bestScore = score;
                 bestMatch = sr;
             }
         }
-        String prompt = getString(chatQuery.getMessage(), bestMatch, bestScore);
-        log.info("Best match score: {}, prompt to LLM: {}", bestScore, prompt);
-        ChatServiceLLMResponse llmResponse = geminiClient.sendPrompt(prompt, ChatServiceLLMResponse.class);
+        log.info("Best match score: {}", bestScore);
+        UserInfo userInfo = userService.getById(message.getSenderId());
+        Reservation reservation = reservationRepository.findByGuestIdAndStatus(message.getSenderId(), "CHECKED_IN");
+        String prompt = getPromptString(message.getMessage(), bestMatch, bestScore, reservation, userInfo);
+        log.info("Constructed prompt for LLM: {}", prompt);
+        LLMRequest geminiRequest = new LLMRequest(List.of(
+                new LLMPayload(List.of(new PayloadPart(prompt)))
+        ));
+        String payload = objectMapper.writeValueAsString(geminiRequest);
+        ChatServiceLLMResponse llmResponse = geminiClient.sendPrompt(payload, ChatServiceLLMResponse.class);
         log.info("LLM Response: {}", llmResponse);
 
         if (bestMatch != null && !"NORMAL".equalsIgnoreCase(llmResponse.getAction())) {
             switch (llmResponse.getAction().toUpperCase()) {
-                case "ESCALATE":
+                case "ESCALATE", "DELAY":
                     bestMatch.setStatus(ServiceRequestStatus.ESCALATED);
                     requestRepo.save(bestMatch);
-                    saveServiceRequestStaffMsg(bestMatch, "Guest inquiry escalated. Please respond.");
                     break;
                 case "COMPLETE":
                 case "CLOSED":
-                    bestMatch.setStatus(ServiceRequestStatus.COMPLETED);
+                    bestMatch.setStatus(ServiceRequestStatus.fromCode(llmResponse.getAction().toUpperCase()));
                     requestRepo.save(bestMatch);
-                    saveServiceRequestStaffMsg(bestMatch, "Request marked complete by guest inquiry.");
-                    break;
-                case "DELAY":
-                    bestMatch.setStatus(ServiceRequestStatus.ESCALATED);
-                    requestRepo.save(bestMatch);
-                    saveServiceRequestStaffMsg(bestMatch, "Guest reported delay. Staff notified.");
                     break;
                 default: break;
             }
         }
+
+        ChatMessage guestMsg = new ChatMessage();
+        guestMsg.setChatRequestId(chatRequest.getId());
+        guestMsg.setSenderRole(UserRole.GUEST);
+        guestMsg.setVisibility(List.of(UserRole.GUEST));
+        guestMsg.setMessage(message.getMessage());
+        guestMsg.setTimestamp(Instant.now());
+        chatRequestRepository.save(chatRequest);
+        chatMessageRepository.save(guestMsg);
 
         // Assistant response to guest in chat
         ChatMessage assistantMsg = new ChatMessage();
         assistantMsg.setChatRequestId(chatRequest.getId());
         assistantMsg.setSenderRole(UserRole.ASSISTANT);
         assistantMsg.setVisibility(List.of(UserRole.ASSISTANT));
-        assistantMsg.setMessage(llmResponse.getReply());
+        assistantMsg.setMessage(llmResponse.getReplyToGuest());
         assistantMsg.setTimestamp(Instant.now());
         chatMessageRepository.save(assistantMsg);
 
@@ -141,21 +140,48 @@ public class ChatRequestService {
             chatRequest = closeChatRequest(chatRequest.getId());
             log.info("Chat session closed by LLM, reason: " + llmResponse.getReason());
         }
-        return new ChatResponse(chatRequest, llmResponse.getReply());
+        return new ChatResponse(chatRequest, llmResponse.getReplyToGuest());
     }
 
-    private static String getString(String chatQuery, ServiceRequest bestMatch, double bestScore) {
+    private String getPromptString(String chatQuery, ServiceRequest bestMatch, double bestScore, Reservation reservation, UserInfo userInfo) {
         String prompt;
+        String guestReservationDetails = summarizeGuestDetail(userInfo, reservation);
         if (bestMatch != null && bestScore > 0.8) {
-            prompt = "Guest asked: \"" + chatQuery + "\"\n"
-                    + "Related request: Title='" + bestMatch.getRequestTitle()
-                    + "', Status='" + bestMatch.getStatus()
-                    + "', Description='" + bestMatch.getRequestDescription() + "'\n"
-                    + "Decide next action: escalate, complete, normal reply, AND decide if the chat session should be closed."
-                    + "Respond JSON: { \"action\": \"...\", \"reply\": \"...\", \"shouldClose\": true/false, \"reason\": \"...\" }";
+            prompt = """
+                    You are assisting hotel guest for guest service requests or general query.
+                    Guest Details:
+                    %s
+                    Message: "%s"
+                    Sentiment: (please infer from the guest input)
+                    Related open request found:
+                    Title: %s
+                    Description: %s
+                    Current Status: %s
+                    
+                    Based on the guest's question and the related open request, determine the appropriate action.
+                    Possible actions:
+                    - SERVICE_REQUEST: If the guest is asking for new service or information related to the existing request. Provide response to guest, staff and admin if needed.
+                    - ESCALATE: If the guest is dissatisfied or requests urgent attention. Response to staff and admin needed.
+                    - COMPLETE: If the guest indicates the issue is resolved. Response to staff and admin if needed.
+                    - DELAY: If the guest reports a delay or ongoing issue. Response to staff and admin if needed.
+                    - NORMAL: If no action is needed.
+                    
+                    Respond with JSON: {"action":"SERVICE_REQUEST|ESCALATE|COMPLETE|DELAY|NORMAL","replyToGuest":"Response to guest","replyToStaff":"Response to Staff","replyToAdmin":"Response to admin"}
+                    """.formatted(
+                    guestReservationDetails,
+                    chatQuery,
+                    bestMatch.getRequestTitle(),
+                    bestMatch.getRequestDescription() != null ? bestMatch.getRequestDescription() : "",
+                    bestMatch.getStatus());
         } else {
-            prompt = "Guest asked: \"" + chatQuery + "\"\n"
-                    + "No related open requests. Respond with help or new request option as JSON: { \"action\": \"...\", \"reply\": \"...\" }";
+            prompt = """
+                    You are assisting hotel guest for guest service requests or general query.
+                    Guest Details:
+                    %s
+                    Message: "%s"
+                    Sentiment: (please infer from the guest input)
+                    No related open requests. Respond with help or new request option as JSON: { "action": "...", "replyToGuest": "..." }
+                    """.formatted(guestReservationDetails, chatQuery);
         }
         return prompt;
     }
@@ -182,5 +208,68 @@ public class ChatRequestService {
             chatRequestRepository.save(chatRequest);
         }
         return chatRequest;
+    }
+
+    private String summarizeGuestDetail(UserInfo guestDetails, Reservation reservationDetails) {
+        return """
+                Name: %s
+                Reservation ID: %s
+                Room Number: %s
+                Room Type: %s
+                Check-In Date: %s
+                Check-Out Date: %s
+                Number of Occupants: %d
+                Status: %s
+                """.formatted(
+                guestDetails.getName(),
+                reservationDetails.getId(),
+                reservationDetails.getRoomNumber(),
+                reservationDetails.getRoomType(),
+                reservationDetails.getCheckInDate(),
+                reservationDetails.getCheckOutDate(),
+                reservationDetails.getNumberOfOccupants(),
+                reservationDetails.getStatus());
+    }
+
+    private void addAllResponseMessages(
+            ChatServiceLLMResponse llmResponse,
+            ServiceRequest request) {
+        if (nonEmpty(llmResponse.getReplyToGuest())) {
+            Message guestMsg = new Message();
+            guestMsg.setUserId(request.getGuestId());
+            guestMsg.setThreadId(request.getUserThread().getThreadId());
+            guestMsg.setContent(llmResponse.getReplyToGuest());
+            guestMsg.setCreatedBy(UserRole.ASSISTANT);
+            guestMsg.setVisibility(List.of(UserRole.GUEST, UserRole.ADMIN));
+            guestMsg.setTime(Instant.now().toString());
+            messageRepo.save(guestMsg);
+        }
+        if (nonEmpty(llmResponse.getReplyToStaff())) {
+            Message staffMsg = new Message();
+            staffMsg.setUserId(request.getAssignedTo());
+            staffMsg.setThreadId(request.getUserThread().getThreadId());
+            staffMsg.setContent(llmResponse.getReplyToStaff());
+            staffMsg.setCreatedBy(UserRole.ASSISTANT);
+            staffMsg.setVisibility(List.of(UserRole.STAFF, UserRole.ADMIN));
+            staffMsg.setTime(Instant.now().toString());
+            messageRepo.save(staffMsg);
+        }
+        if (nonEmpty(llmResponse.getReplyToAdmin())) {
+            Message adminMsg = new Message();
+            request.getUserThread().getParticipantIds().stream()
+                    .filter(participant -> "ADMIN".equalsIgnoreCase(participant.getRole()))
+                    .findFirst()
+                    .ifPresent(participant -> adminMsg.setUserId(participant.getId()));
+            adminMsg.setThreadId(request.getUserThread().getThreadId());
+            adminMsg.setContent(llmResponse.getReplyToAdmin());
+            adminMsg.setCreatedBy(UserRole.ASSISTANT);
+            adminMsg.setVisibility(List.of(UserRole.ADMIN));
+            adminMsg.setTime(Instant.now().toString());
+            messageRepo.save(adminMsg);
+        }
+    }
+
+    private boolean nonEmpty(String val) {
+        return val != null && !val.trim().isEmpty();
     }
 }

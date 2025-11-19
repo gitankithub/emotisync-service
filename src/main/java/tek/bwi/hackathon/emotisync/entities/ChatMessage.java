@@ -18,6 +18,7 @@ public class ChatMessage {
     @Id
     private String id;
     private String chatRequestId;
+    private String senderId;
     private UserRole senderRole;
     private List<UserRole> visibility;
     private String message;

@@ -10,6 +10,6 @@ import java.util.List;
 @Repository
 public interface RequestRepository extends MongoRepository<ServiceRequest, String> {
     List<ServiceRequest> findByGuestId(String guestId);
-    List<ServiceRequest> findByGuestIdAndStatus(String guestId, List<String> status);
+    List<ServiceRequest> findByGuestIdAndStatusIn(String guestId, List<String> status);
     ServiceRequest findByUserThread_ThreadId(String threadId);
 }

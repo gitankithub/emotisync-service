@@ -1,5 +1,6 @@
 package tek.bwi.hackathon.emotisync.restcontroller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,13 +24,14 @@ public class ChatRequestController {
 
     @PostMapping("/message")
     public ResponseEntity<ChatResponse> sendChatMessage(
-            @RequestParam(required = false) String chatRequestId,
-            @RequestParam String guestId,
             @RequestBody ChatMessage message
     ) {
         log.info("Received chat message: {}", message);
-        ChatRequest session = chatRequestService.ensureChatRequestSession(chatRequestId, guestId);
-        return ResponseEntity.ok(chatRequestService.handleChatQuery(session.getId(), guestId, message));
+        try {
+            return ResponseEntity.ok(chatRequestService.handleChatQuery(message));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @GetMapping("/history")

@@ -46,7 +46,6 @@ public class GeminiEmbeddingClient {
                 .retrieve()
                 .bodyToMono(GeminiEmbeddingResponse.class)
                 .block();
-        log.info("Received embedding response from Gemini: {}", response);
         if (response != null && response.getEmbedding() != null) {
             return response.getEmbedding().getValues();
         } else {

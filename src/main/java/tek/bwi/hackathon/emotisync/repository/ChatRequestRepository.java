@@ -8,7 +8,7 @@ import java.util.List;
 
 @Repository
 public interface ChatRequestRepository extends MongoRepository<ChatRequest, String> {
-    List<ChatRequest> findByGuestIdAndStatus(String guestId, String status);
+    List<ChatRequest> findBySenderIdAndStatus(String guestId, String status);
 }
 
 
