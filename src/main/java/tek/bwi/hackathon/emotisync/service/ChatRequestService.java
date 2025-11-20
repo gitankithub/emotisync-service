@@ -29,13 +29,14 @@ public class ChatRequestService {
     private final GeminiEmbeddingClient embeddingClient;
     private final GeminiClient geminiClient;
     private final UserService userService;
+    private final PromptBuilderService promptBuilderService;
 
     public ChatRequestService(ObjectMapper objectMapper, RequestRepository requestRepo,
                               MessageRepository messageRepo,
                               ChatRequestRepository chatRequestRepository,
                               ChatMessageRepository chatMessageRepository,
                               ReservationRepository reservationRepository, GeminiEmbeddingClient embeddingClient,
-                              GeminiClient geminiClient, UserService userService) {
+                              GeminiClient geminiClient, UserService userService, PromptBuilderService promptBuilderService) {
         this.objectMapper = objectMapper;
         this.requestRepo = requestRepo;
         this.messageRepo = messageRepo;
@@ -45,6 +46,7 @@ public class ChatRequestService {
         this.embeddingClient = embeddingClient;
         this.geminiClient = geminiClient;
         this.userService = userService;
+        this.promptBuilderService = promptBuilderService;
     }
 
     private double cosineSimilarity(List<Float> v1, List<Float> v2) {
@@ -94,7 +96,7 @@ public class ChatRequestService {
         log.info("Best match score: {}", bestScore);
         UserInfo userInfo = userService.getById(message.getSenderId());
         Reservation reservation = reservationRepository.findByGuestIdAndStatus(message.getSenderId(), "CHECKED_IN");
-        String prompt = getPromptString(message.getMessage(), bestMatch, bestScore, reservation, userInfo);
+        String prompt = promptBuilderService.buildChatQueryPrompt(message.getMessage(), bestMatch, bestScore, reservation, userInfo);
         log.info("Constructed prompt for LLM: {}", prompt);
         LLMRequest geminiRequest = new LLMRequest(List.of(
                 new LLMPayload(List.of(new PayloadPart(prompt)))
@@ -116,6 +118,7 @@ public class ChatRequestService {
                     break;
                 default: break;
             }
+            addAllResponseMessages(llmResponse, bestMatch);
         }
 
         ChatMessage guestMsg = new ChatMessage();
@@ -143,59 +146,6 @@ public class ChatRequestService {
         return new ChatResponse(chatRequest, llmResponse.getReplyToGuest());
     }
 
-    private String getPromptString(String chatQuery, ServiceRequest bestMatch, double bestScore, Reservation reservation, UserInfo userInfo) {
-        String prompt;
-        String guestReservationDetails = summarizeGuestDetail(userInfo, reservation);
-        if (bestMatch != null && bestScore > 0.8) {
-            prompt = """
-                    You are assisting hotel guest for guest service requests or general query.
-                    Guest Details:
-                    %s
-                    Message: "%s"
-                    Sentiment: (please infer from the guest input)
-                    Related open request found:
-                    Title: %s
-                    Description: %s
-                    Current Status: %s
-                    
-                    Based on the guest's question and the related open request, determine the appropriate action.
-                    Possible actions:
-                    - SERVICE_REQUEST: If the guest is asking for new service or information related to the existing request. Provide response to guest, staff and admin if needed.
-                    - ESCALATE: If the guest is dissatisfied or requests urgent attention. Response to staff and admin needed.
-                    - COMPLETE: If the guest indicates the issue is resolved. Response to staff and admin if needed.
-                    - DELAY: If the guest reports a delay or ongoing issue. Response to staff and admin if needed.
-                    - NORMAL: If no action is needed.
-                    
-                    Respond with JSON: {"action":"SERVICE_REQUEST|ESCALATE|COMPLETE|DELAY|NORMAL","replyToGuest":"Response to guest","replyToStaff":"Response to Staff","replyToAdmin":"Response to admin"}
-                    """.formatted(
-                    guestReservationDetails,
-                    chatQuery,
-                    bestMatch.getRequestTitle(),
-                    bestMatch.getRequestDescription() != null ? bestMatch.getRequestDescription() : "",
-                    bestMatch.getStatus());
-        } else {
-            prompt = """
-                    You are assisting hotel guest for guest service requests or general query.
-                    Guest Details:
-                    %s
-                    Message: "%s"
-                    Sentiment: (please infer from the guest input)
-                    No related open requests. Respond with help or new request option as JSON: { "action": "...", "replyToGuest": "..." }
-                    """.formatted(guestReservationDetails, chatQuery);
-        }
-        return prompt;
-    }
-
-    private void saveServiceRequestStaffMsg(ServiceRequest serviceRequest, String text) {
-        Message msg = new Message();
-        msg.setThreadId(serviceRequest.getUserThread().getThreadId());
-        msg.setCreatedBy(UserRole.ASSISTANT);
-        msg.setVisibility(List.of(UserRole.STAFF, UserRole.ADMIN));
-        msg.setContent(text);
-        msg.setTime(Instant.now().toString());
-        messageRepo.save(msg);
-    }
-
     public List<ChatMessage> getChatHistory(String chatRequestId, String status) {
         return chatMessageRepository.findByChatRequestIdAndStatusOrderByTimestampAsc(chatRequestId, status);
     }
@@ -208,27 +158,6 @@ public class ChatRequestService {
             chatRequestRepository.save(chatRequest);
         }
         return chatRequest;
-    }
-
-    private String summarizeGuestDetail(UserInfo guestDetails, Reservation reservationDetails) {
-        return """
-                Name: %s
-                Reservation ID: %s
-                Room Number: %s
-                Room Type: %s
-                Check-In Date: %s
-                Check-Out Date: %s
-                Number of Occupants: %d
-                Status: %s
-                """.formatted(
-                guestDetails.getName(),
-                reservationDetails.getId(),
-                reservationDetails.getRoomNumber(),
-                reservationDetails.getRoomType(),
-                reservationDetails.getCheckInDate(),
-                reservationDetails.getCheckOutDate(),
-                reservationDetails.getNumberOfOccupants(),
-                reservationDetails.getStatus());
     }
 
     private void addAllResponseMessages(

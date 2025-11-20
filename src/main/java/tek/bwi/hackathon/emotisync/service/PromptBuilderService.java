@@ -4,6 +4,7 @@ package tek.bwi.hackathon.emotisync.service;
 import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.entities.Message;
 import tek.bwi.hackathon.emotisync.entities.Reservation;
+import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
 import tek.bwi.hackathon.emotisync.entities.UserInfo;
 
 import java.util.List;
@@ -130,6 +131,49 @@ public class PromptBuilderService {
                     }
                   }
                 """.formatted(userInfo.getName(), message.getContent(), guestReservationDetails, chatHistorySummary);
+    }
+
+    public String buildChatQueryPrompt(String chatQuery, ServiceRequest bestMatch, double bestScore, Reservation reservation, UserInfo userInfo) {
+        String prompt;
+        String guestReservationDetails = summarizeGuestDetail(userInfo, reservation);
+        if (bestMatch != null && bestScore > 0.8) {
+            prompt = """
+                    You are assisting hotel guest for guest service requests or general query.
+                    Guest Details:
+                    %s
+                    Message: "%s"
+                    Sentiment: (please infer from the guest input)
+                    Related open request found:
+                    Title: %s
+                    Description: %s
+                    Current Status: %s
+                    
+                    Based on the guest's question and the related open request, determine the appropriate action.
+                    Possible actions:
+                    - SERVICE_REQUEST: If the guest is asking for new service or information related to the existing request. Provide response to guest, staff and admin if needed.
+                    - ESCALATE: If the guest is dissatisfied or requests urgent attention. Response to staff and admin needed.
+                    - COMPLETE: If the guest indicates the issue is resolved. Response to staff and admin if needed.
+                    - DELAY: If the guest reports a delay or ongoing issue. Response to staff and admin if needed.
+                    - NORMAL: If no action is needed.
+                    
+                    Respond with JSON: {"action":"SERVICE_REQUEST|ESCALATE|COMPLETE|DELAY|NORMAL","replyToGuest":"Response to guest","replyToStaff":"Response to Staff","replyToAdmin":"Response to admin"}
+                    """.formatted(
+                    guestReservationDetails,
+                    chatQuery,
+                    bestMatch.getRequestTitle(),
+                    bestMatch.getRequestDescription() != null ? bestMatch.getRequestDescription() : "",
+                    bestMatch.getStatus());
+        } else {
+            prompt = """
+                    You are assisting hotel guest for guest service requests or general query.
+                    Guest Details:
+                    %s
+                    Message: "%s"
+                    Sentiment: (please infer from the guest input)
+                    No related open requests. Respond with help or new request option as JSON: { "action": "...", "replyToGuest": "..." }
+                    """.formatted(guestReservationDetails, chatQuery);
+        }
+        return prompt;
     }
 
     public String summarizeChatHistory(List<Message> messages) {

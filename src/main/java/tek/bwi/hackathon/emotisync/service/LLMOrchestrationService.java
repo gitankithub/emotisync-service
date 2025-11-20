@@ -34,7 +34,7 @@ public class LLMOrchestrationService {
 
     public void handleLLMResponse(
             LLMResponse llmResponse,
-            Message message, ServiceRequest request) {
+            Message message) {
         // Check for existing service request linked to this thread
         ServiceRequest existingRequest = requestRepository.findByUserThread_ThreadId(message.getThreadId());
         log.info("Existing Service Request: {}", existingRequest);
