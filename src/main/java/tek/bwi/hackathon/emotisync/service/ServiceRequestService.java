@@ -13,6 +13,7 @@ import tek.bwi.hackathon.emotisync.repository.ThreadRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -29,7 +30,7 @@ public class ServiceRequestService {
 
     public ServiceRequest create(ServiceRequest request) {
         // Set basic fields (requestId auto-assigned with save)
-        String reqId = UUID.randomUUID().toString();
+        String reqId = buildRequestNumber();
         request.setRequestId(reqId);
         request.setStatus(ServiceRequestStatus.OPEN);
         request.setCreatedAt(Instant.now().toString());
@@ -44,6 +45,14 @@ public class ServiceRequestService {
 
         request.setUserThread(chatThread);
         return requestRepo.save(request);
+    }
+
+    private String buildRequestNumber() {
+        long timestamp = System.currentTimeMillis() % 10000000000L; // last 10 digits of current time in ms
+        Random random = new Random();
+        int randomNum = random.nextInt(900) + 100;  // 3-digit random number (100-999)
+        // Format: REQ + 10-digit timestamp + 3-digit random number = 13 digits total
+        return String.format("REQ%010d%03d", timestamp, randomNum);
     }
 
     private void assignThreadParticipants(String guestId, String assignedTo, UserThread chatThread) {

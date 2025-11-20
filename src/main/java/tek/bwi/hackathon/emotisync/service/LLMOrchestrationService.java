@@ -83,7 +83,6 @@ public class LLMOrchestrationService {
 
     private ServiceRequest buildServiceRequest(LLMResponse llmResponse, Message message) {
         ServiceRequest serviceRequest = new ServiceRequest();
-        serviceRequest.setRequestId(buildRequestNumber());
         serviceRequest.setRequestTitle(llmResponse.getActionDetail().getTitle());
         serviceRequest.setRequestDescription(llmResponse.getActionDetail().getDescription());
         serviceRequest.setStatus(ServiceRequestStatus.OPEN);
@@ -93,14 +92,6 @@ public class LLMOrchestrationService {
         chatThread.setThreadId(message.getThreadId());
         serviceRequest.setUserThread(chatThread);
         return serviceRequest;
-    }
-
-    private String buildRequestNumber() {
-        long timestamp = System.currentTimeMillis() % 10000000000L; // last 10 digits of current time in ms
-        Random random = new Random();
-        int randomNum = random.nextInt(900) + 100;  // 3-digit random number (100-999)
-        // Format: REQ + 10-digit timestamp + 3-digit random number = 13 digits total
-        return String.format("REQ%010d%03d", timestamp, randomNum);
     }
 
     private void addAllResponseMessages(
