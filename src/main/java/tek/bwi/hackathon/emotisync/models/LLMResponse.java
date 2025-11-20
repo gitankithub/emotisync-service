@@ -20,6 +20,7 @@ public class LLMResponse {
     public static class ActionDetail {
         private ActionDetailEnum type;     // e.g. "escalate", "createServiceRequest", "completed", "closeRequest"
         private String targetUserRole;    // e.g. "staff", "admin"
+        private String status;
         private String title;             // e.g. "Escalate Room Cleaning"
         private String description;       // e.g. "Guest has complained twice"
         private String urgency;           // e.g. "urgent"

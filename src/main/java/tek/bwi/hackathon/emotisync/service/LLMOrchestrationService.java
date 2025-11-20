@@ -52,9 +52,12 @@ public class LLMOrchestrationService {
                     addAllResponseMessages(llmResponse, message, newRequest);
                     break;
 
-                case UPDATE_SERVICE_REQUEST:
-                    if (existingRequest != null)
-                        serviceRequestService.updateStatus(existingRequest.getRequestId(), String.valueOf(ServiceRequestStatus.IN_PROGRESS));
+                case UPDATE_SERVICE_REQUEST , UPDATE_REQUEST:
+                    if (existingRequest != null) {
+                        String status = "ACCEPT".equals(llmResponse.getActionDetail().getStatus()) ? String.valueOf(ServiceRequestStatus.IN_PROGRESS)
+                                : llmResponse.getActionDetail().getStatus();
+                        serviceRequestService.updateStatus(existingRequest.getRequestId(), status);
+                    }
                     addAllResponseMessages(llmResponse, message, existingRequest);
                     break;
 

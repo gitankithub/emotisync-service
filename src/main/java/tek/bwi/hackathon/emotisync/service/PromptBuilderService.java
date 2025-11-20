@@ -45,8 +45,8 @@ public class PromptBuilderService {
                   "responseForAdmin": "Response or escalation instruction for admin, if needed",
                   "actionNeeded": true/false,
                   "actionDetail": {
-                    "type": "...",           // e.g. "ESCALATE",  "CREATE_SERVICE_REQUEST",  "COMPLETED", "CLOSE_REQUEST"
-                    "targetUserRole": "...", // e.g. "staff", "admin"
+                    "type": "ESCALATE|CREATE_SERVICE_REQUEST|COMPLETED|UPDATE_SERVICE_REQUEST|CLOSE_REQUEST",
+                    "status": "...", // e.g. "staff", "admin"
                     "escalationTarget": "serviceRequest|thread|both",
                     "title": "...",
                     "description": "...",
@@ -61,36 +61,39 @@ public class PromptBuilderService {
         String guestReservationDetails = summarizeGuestDetail(guestInfo, guestReservation);
         return """
                 You are assisting hotel staff managing guest service requests.
-                 
-                 Staff Name: %s
-                 Message: "%s"
-                 Guest Details:
-                 %s
-                 Recent Staff Chat:
-                 %s
-                 
-                 Your task (conditional):
-                 - Carefully analyze the staff's input and context.
-                 - If appropriate, generate:
-                     - A message for the staff (responseForStaff).
-                     - A message for the guest if the guest should be notified (responseForGuest).
-                     - A message for admin if escalation is needed (responseForAdmin).
-                 - If the staff's response implies a backend/service action (such as marking a service request complete, escalating, starting a new request, or updating any entity), set "actionNeeded" to true and provide "actionType" and "actionDetails" explaining what should happen.
-                 - Only include each field if relevant.
-                 
-                 Return JSON:
-                 {
-                    "responseForGuest": "Response to guest, if needed",
-                    "responseForStaff": "Response to staff, if needed",
-                    "responseForAdmin": "Response or escalation instruction for admin, if needed",
-                    "actionNeeded": true/false,
-                    "actionDetail": {
-                      "type": "...",          // e.g. "ESCALATE",  "CREATE_SERVICE_REQUEST",  "COMPLETED", "CLOSE_REQUEST"
-                      "targetUserRole": "...",
-                      "description": "...",
-                      "urgency": "routine|urgent|escalated"
-                    }
+                
+                Staff Name: %s
+                Staff Message: "%s"
+                Guest Details:
+                %s
+                Recent Staff Chat:
+                %s
+                
+                Your task (conditional):
+                - When staff selects an action for a service request (accept, complete, cancel, etc.), always set "actionNeeded": true and fill "actionDetail" with:
+                    - "type": "UPDATE_REQUEST"
+                    - "status": corresponding to the staff action (e.g., "IN_PROGRESS", "COMPLETED", "CANCELED")
+                    - "targetUserRole": "staff"
+                    - "description": summarize what happened
+                    - "urgency": as appropriate
+                - Generate a clear response for staff if case of any action taken (responseForStaff).
+                - Generate appropriate messages for guest upon each service request update if make sense.
+                - Only include each field if relevant.
+                
+                Return JSON:
+                {
+                  "responseForGuest": "...",
+                  "responseForStaff": "...",
+                  "responseForAdmin": "...",
+                  "actionNeeded": true/false,
+                  "actionDetail": {
+                    "type": "...", e.g.ESCALATE|CREATE_SERVICE_REQUEST|COMPLETED|UPDATE_SERVICE_REQUEST|CLOSE_REQUEST
+                    "status": "...", e.g. ACCEPT|IN_PROGRESS|REJECTED|CANCELLED|REASSIGNED|COMPLETED
+                    "targetUserRole": "...",
+                    "description": "...",
+                    "urgency": "routine|urgent|escalated"
                   }
+                }
                 """.formatted(userInfo.getName(), message.getContent(), guestReservationDetails, chatHistorySummary);
     }
 

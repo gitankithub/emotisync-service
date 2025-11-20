@@ -6,9 +6,10 @@ import lombok.Getter;
 public enum ServiceRequestStatus {
     OPEN("Open", "The request is created and waiting for action."),
     ASSIGNED("Assigned", "The request has been assigned to a staff member for action."),
-    IN_PROGRESS("In_Progress", "The request is being worked on by staff."),
+    IN_PROGRESS("Accept", "The request is being worked on by staff."),
     ESCALATED("Escalated", "The request has been escalated to higher-level for attention."),
-    CANCELLED("Canceled", "The request has been canceled and will not be processed."),
+    REJECTED("Reject", "The request has been reviewed and rejected."),
+    CANCELLED("Cancel", "The request has been canceled and will not be processed."),
     REASSIGNED("Reassigned", "The request has been reassigned to a different staff member."),
     COMPLETED("Completed", "The request is finished and resolved."),
     CLOSED("Closed", "The request is closed; no further action will be taken.");

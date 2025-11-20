@@ -84,7 +84,7 @@ public class LLMService {
                     reservation,
                     chatHistory
             );
-
+            log.info("Constructed Prompt: {}", prompt);
             LLMRequest geminiRequest = new LLMRequest(List.of(
                     new LLMPayload(List.of(new PayloadPart(prompt)))
             ));
