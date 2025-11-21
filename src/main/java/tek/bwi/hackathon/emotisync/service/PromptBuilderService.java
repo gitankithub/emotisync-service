@@ -152,8 +152,9 @@ public class PromptBuilderService {
                 """.formatted(userInfo.getName(), message.getContent(), guestReservationDetails, chatHistorySummary);
     }
 
-    public String buildChatQueryPrompt(String chatQuery, ServiceRequest bestMatch, double bestScore, Reservation reservation, UserInfo userInfo) {
+    public String buildChatQueryPrompt(String chatQuery, ServiceRequest bestMatch, double bestScore, Reservation reservation, UserInfo userInfo, List<ChatMessage> chatHistory) {
         String prompt;
+        String chatQueryHistory = summarizeChatQueryHistory(chatHistory);
         String guestReservationDetails = summarizeGuestDetail(userInfo, reservation);
         if (bestMatch != null && bestScore > 0.7) {
             prompt = """
@@ -162,6 +163,8 @@ public class PromptBuilderService {
                     %s
                     Message: "%s"
                     Sentiment: (please infer from the guest input)
+                    Recent Chat with Guest:
+                    %s
                     Related open request found:
                     Title: %s
                     Description: %s
@@ -180,6 +183,7 @@ public class PromptBuilderService {
                     """.formatted(
                     guestReservationDetails,
                     chatQuery,
+                    chatQueryHistory,
                     bestMatch.getRequestTitle(),
                     bestMatch.getRequestDescription() != null ? bestMatch.getRequestDescription() : "",
                     bestMatch.getStatus(),
@@ -209,6 +213,20 @@ public class PromptBuilderService {
                     String feedbackLabel = "";
                     feedbackLabel = getFeedbackLabel(m, feedbackLabel);
                     return timeLabel + roleLabel + ": " + mainText + feedbackLabel;
+                })
+                .collect(Collectors.joining("\n"));
+    }
+
+    public String summarizeChatQueryHistory(List<ChatMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return "No prior messages.";
+        }
+        return messages.stream()
+                .map(m -> {
+                    String roleLabel = m.getCreatedBy() != null ? "[" + m.getCreatedBy().name() + "]" : "[USER]";
+                    String timeLabel = (m.getTimestamp() != null && !m.getTimestamp().toString().isEmpty()) ? "[" + m.getTimestamp() + "] " : "";
+                    String mainText = m.getMessage() != null ? m.getMessage() : "";
+                    return timeLabel + roleLabel + ": " + mainText;
                 })
                 .collect(Collectors.joining("\n"));
     }

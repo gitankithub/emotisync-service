@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tek.bwi.hackathon.emotisync.entities.ChatMessage;
 import tek.bwi.hackathon.emotisync.entities.ChatRequest;
+import tek.bwi.hackathon.emotisync.models.BestMatchScore;
 import tek.bwi.hackathon.emotisync.models.ChatResponse;
 import tek.bwi.hackathon.emotisync.service.ChatRequestService;
 
@@ -38,6 +39,11 @@ public class ChatRequestController {
     public ResponseEntity<List<ChatMessage>> getChatHistory(@RequestParam String threadId, @RequestParam(required = false) String status){
         List<ChatMessage> history = chatRequestService.getChatHistory(threadId, status);
         return ResponseEntity.ok(history);
+    }
+
+    @PostMapping("/checkExistingRequest")
+    public ResponseEntity<BestMatchScore> checkExistingServiceRequest(@RequestBody ChatMessage chatMessage){
+        return ResponseEntity.ok(chatRequestService.checkExistingServiceRequest(chatMessage));
     }
 
     @GetMapping("/close")

@@ -79,24 +79,15 @@ public class ChatRequestService {
         ChatRequest chatRequest = ensureChatRequestSession(message.getChatRequestId(), message.getSenderId());
         log.info("Handling chat query for session {}: {}", chatRequest.getId(), message);
         // Find ServiceRequest match
-        List<ServiceRequest> activeRequests = requestRepo.findByGuestIdAndStatusIn(
-                message.getSenderId(), List.of("OPEN", "ASSIGNED", "IN_PROGRESS", "ESCALATED"));
-        log.info("Found {} active requests for guest {}", activeRequests.size(), message.getSenderId());
-        List<Float> queryEmbedding = embeddingClient.embedText(message.getMessage());
-        ServiceRequest bestMatch = null;
-        double bestScore = 0;
-        for (ServiceRequest sr : activeRequests) {
-            List<Float> srEmbedding = embeddingClient.embedText(sr.getRequestTitle());
-            double score = cosineSimilarity(queryEmbedding, srEmbedding);
-            if (score > bestScore) {
-                bestScore = score;
-                bestMatch = sr;
-            }
-        }
-        log.info("Best match score: {}", bestScore);
+        BestMatchScore bestMatchScore = findBestMatchScore(message);
+        log.info("Best match score: {}", bestMatchScore);
         UserInfo userInfo = userService.getById(message.getSenderId());
         Reservation reservation = reservationRepository.findByGuestIdAndStatus(message.getSenderId(), "CHECKED_IN");
-        String prompt = promptBuilderService.buildChatQueryPrompt(message.getMessage(), bestMatch, bestScore, reservation, userInfo);
+        List<ChatMessage> chatHistory = null;
+        if (message.getChatRequestId() != null) {
+            chatHistory = chatMessageRepository.findByChatRequestIdAndStatusOrderByTimestampAsc(message.getChatRequestId(), "ACTIVE");
+        }
+        String prompt = promptBuilderService.buildChatQueryPrompt(message.getMessage(), bestMatchScore.getBestMatch(), bestMatchScore.getBestScore(), reservation, userInfo, chatHistory);
         log.info("Constructed prompt for LLM: {}", prompt);
         LLMRequest geminiRequest = new LLMRequest(List.of(
                 new LLMPayload(List.of(new PayloadPart(prompt)))
@@ -105,20 +96,20 @@ public class ChatRequestService {
         ChatServiceLLMResponse llmResponse = geminiClient.sendPrompt(payload, ChatServiceLLMResponse.class);
         log.info("LLM Response: {}", llmResponse);
 
-        if (bestMatch != null && !"NORMAL".equalsIgnoreCase(llmResponse.getAction())) {
+        if (bestMatchScore.getBestMatch() != null && !"NORMAL".equalsIgnoreCase(llmResponse.getAction())) {
             switch (llmResponse.getAction().toUpperCase()) {
                 case "ESCALATE", "DELAY":
-                    bestMatch.setStatus(ServiceRequestStatus.ESCALATED);
-                    requestRepo.save(bestMatch);
+                    bestMatchScore.getBestMatch().setStatus(ServiceRequestStatus.ESCALATED);
+                    requestRepo.save(bestMatchScore.getBestMatch());
                     break;
                 case "COMPLETE":
                 case "CLOSED":
-                    bestMatch.setStatus(ServiceRequestStatus.fromCode(llmResponse.getAction().toUpperCase()));
-                    requestRepo.save(bestMatch);
+                    bestMatchScore.getBestMatch().setStatus(ServiceRequestStatus.fromCode(llmResponse.getAction().toUpperCase()));
+                    requestRepo.save(bestMatchScore.getBestMatch());
                     break;
                 default: break;
             }
-            addAllResponseMessages(llmResponse, bestMatch);
+            addAllResponseMessages(llmResponse, bestMatchScore.getBestMatch());
         }
 
         ChatMessage guestMsg = new ChatMessage();
@@ -142,6 +133,24 @@ public class ChatRequestService {
             log.info("Chat session closed by LLM, reason: " + llmResponse.getReason());
         }
         return new ChatResponse(chatRequest, llmResponse.getReplyToGuest());
+    }
+
+    private BestMatchScore findBestMatchScore(ChatMessage message) {
+        List<ServiceRequest> activeRequests = requestRepo.findByGuestIdAndStatusIn(
+                message.getSenderId(), List.of("OPEN", "ASSIGNED", "IN_PROGRESS", "ESCALATED"));
+        log.info("Found {} active requests for guest {}", activeRequests.size(), message.getSenderId());
+        List<Float> queryEmbedding = embeddingClient.embedText(message.getMessage());
+        ServiceRequest bestMatch = null;
+        double bestScore = 0;
+        for (ServiceRequest sr : activeRequests) {
+            List<Float> srEmbedding = embeddingClient.embedText(sr.getRequestTitle());
+            double score = cosineSimilarity(queryEmbedding, srEmbedding);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = sr;
+            }
+        }
+        return new BestMatchScore(bestScore, bestMatch);
     }
 
     public List<ChatMessage> getChatHistory(String chatRequestId, String status) {
@@ -198,5 +207,14 @@ public class ChatRequestService {
 
     private boolean nonEmpty(String val) {
         return val != null && !val.trim().isEmpty();
+    }
+
+    public BestMatchScore checkExistingServiceRequest(ChatMessage chatMessage) {
+        BestMatchScore bestMatchScore = findBestMatchScore(chatMessage);
+        if (bestMatchScore.getBestScore() > 0.7) {
+            return bestMatchScore;
+        } else {
+            return null;
+        }
     }
 }
