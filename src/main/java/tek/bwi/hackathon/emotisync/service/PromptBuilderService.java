@@ -155,7 +155,7 @@ public class PromptBuilderService {
     public String buildChatQueryPrompt(String chatQuery, ServiceRequest bestMatch, double bestScore, Reservation reservation, UserInfo userInfo) {
         String prompt;
         String guestReservationDetails = summarizeGuestDetail(userInfo, reservation);
-        if (bestMatch != null && bestScore > 0.8) {
+        if (bestMatch != null && bestScore > 0.7) {
             prompt = """
                     You are assisting hotel guest for guest service requests or general query.
                     Guest Details:
