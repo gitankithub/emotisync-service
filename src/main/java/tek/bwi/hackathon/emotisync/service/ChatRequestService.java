@@ -61,7 +61,7 @@ public class ChatRequestService {
 
     // Create new session for new chat or return existing session for reply
     public ChatRequest ensureChatRequestSession(String chatRequestId, String senderId) {
-        if (chatRequestId == null) {
+        if (chatRequestId == null || chatRequestId.isEmpty()) {
             ChatRequest chatRequest = new ChatRequest();
             chatRequest.setId(UUID.randomUUID().toString());
             chatRequest.setSenderId(senderId);
@@ -70,7 +70,7 @@ public class ChatRequestService {
             chatRequest.setStatus("ACTIVE");
             return chatRequest;
         } else {
-            return chatRequestRepository.findById(chatRequestId).orElseThrow();
+            return chatRequestRepository.findById(chatRequestId).orElseThrow(() -> new RuntimeException("failed to retrieve chat request."));
         }
     }
 
@@ -123,8 +123,7 @@ public class ChatRequestService {
 
         ChatMessage guestMsg = new ChatMessage();
         guestMsg.setChatRequestId(chatRequest.getId());
-        guestMsg.setSenderRole(UserRole.GUEST);
-        guestMsg.setVisibility(List.of(UserRole.GUEST));
+        guestMsg.setCreatedBy(UserRole.GUEST);
         guestMsg.setMessage(message.getMessage());
         guestMsg.setTimestamp(Instant.now());
         chatRequestRepository.save(chatRequest);
@@ -133,8 +132,7 @@ public class ChatRequestService {
         // Assistant response to guest in chat
         ChatMessage assistantMsg = new ChatMessage();
         assistantMsg.setChatRequestId(chatRequest.getId());
-        assistantMsg.setSenderRole(UserRole.ASSISTANT);
-        assistantMsg.setVisibility(List.of(UserRole.ASSISTANT));
+        assistantMsg.setCreatedBy(UserRole.ASSISTANT);
         assistantMsg.setMessage(llmResponse.getReplyToGuest());
         assistantMsg.setTimestamp(Instant.now());
         chatMessageRepository.save(assistantMsg);

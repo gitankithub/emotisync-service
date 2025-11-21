@@ -2,10 +2,7 @@ package tek.bwi.hackathon.emotisync.service;
 
 
 import org.springframework.stereotype.Service;
-import tek.bwi.hackathon.emotisync.entities.Message;
-import tek.bwi.hackathon.emotisync.entities.Reservation;
-import tek.bwi.hackathon.emotisync.entities.ServiceRequest;
-import tek.bwi.hackathon.emotisync.entities.UserInfo;
+import tek.bwi.hackathon.emotisync.entities.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,7 +32,7 @@ public class PromptBuilderService {
                   - Only notify parties if there's a clear need based on guest input and context.
                 - For service requests:
                   - If the guest's input suggests a new service request (for amenities, issues, or help), set actionNeeded to true, with actionDetail describing what should be done.
-                  - If an escalation or closure is needed, set actionNeeded to true and in actionDetail specify 'type' as escalate or closeRequest, and 'escalationTarget' as "serviceRequest", "thread", or "both", indicating whether escalation applies to the service request, the thread, or both.
+                  - If a closure is needed, set actionNeeded to true and in actionDetail specify 'type' as closeRequest.
                   - If not, set actionNeeded to false and skip extra fields.
                                 
                 Return this structured JSON:
@@ -45,30 +42,33 @@ public class PromptBuilderService {
                   "responseForAdmin": "Response or escalation instruction for admin, if needed",
                   "actionNeeded": true/false,
                   "actionDetail": {
-                    "type": "ESCALATE|CREATE_SERVICE_REQUEST|COMPLETED|UPDATE_SERVICE_REQUEST|CLOSE_REQUEST",
+                    "type": "CREATE_SERVICE_REQUEST|UPDATE_SERVICE_REQUEST|CLOSE_REQUEST",
                     "status": "...", // e.g. "staff", "admin"
                     "escalationTarget": "serviceRequest|thread|both",
                     "title": "...",
                     "description": "...",
-                    "urgency": "routine|urgent|escalated"
+                    "urgency": "routine|urgent"
                   }
                 }
                 """.formatted(guestReservationDetails, message.getContent(), chatHistorySummary);
     }
 
-    public String buildStaffPrompt(Message message, UserInfo userInfo, UserInfo guestInfo, Reservation guestReservation, List<Message> staffChatHistory) {
-        String chatHistorySummary = summarizeChatHistory(staffChatHistory);
+    public String buildStaffPrompt(Message message, UserInfo userInfo, UserInfo guestInfo, Reservation guestReservation, ServiceRequest serviceRequest, List<Message> chatHistory) {
+        String chatHistorySummary = summarizeChatHistory(chatHistory);
+        String recentRequestSummary = summarizeServiceRequest(serviceRequest);
         String guestReservationDetails = summarizeGuestDetail(guestInfo, guestReservation);
         return """
                 You are assisting hotel staff managing guest service requests.
-                
+                                
                 Staff Name: %s
                 Staff Message: "%s"
                 Guest Details:
                 %s
-                Recent Staff Chat:
+                Related request:
                 %s
-                
+                Recent Chat:
+                %s
+                                
                 Your task (conditional):
                 - When staff selects an action for a service request (accept, complete, cancel, etc.), always set "actionNeeded": true and fill "actionDetail" with:
                     - "type": "UPDATE_REQUEST"
@@ -76,10 +76,11 @@ public class PromptBuilderService {
                     - "targetUserRole": "staff"
                     - "description": summarize what happened
                     - "urgency": as appropriate
+                - ESCALATED: If service request SLA is breached. Decide based on the service request createdAt field with standard SLA (You can set SLA based on task type and standard SLA). Response to guest, staff and admin needed.
                 - Generate a clear response for staff if case of any action taken (responseForStaff).
                 - Generate appropriate messages for guest upon each service request update if make sense.
                 - Only include each field if relevant.
-                
+                                
                 Return JSON:
                 {
                   "responseForGuest": "...",
@@ -87,15 +88,30 @@ public class PromptBuilderService {
                   "responseForAdmin": "...",
                   "actionNeeded": true/false,
                   "actionDetail": {
-                    "type": "...", e.g.ESCALATE|CREATE_SERVICE_REQUEST|COMPLETED|UPDATE_SERVICE_REQUEST|CLOSE_REQUEST
-                    "status": "...", e.g. ACCEPT|IN_PROGRESS|REJECTED|CANCELLED|REASSIGNED|COMPLETED
+                    "type": "...", e.g. UPDATE_SERVICE_REQUEST
+                    "status": "...", e.g. ACCEPT|IN_PROGRESS|REJECTED|CANCELLED|REASSIGNED|COMPLETED|ESCALATED
                     "targetUserRole": "...",
                     "description": "...",
                     "urgency": "routine|urgent|escalated"
                   }
                 }
-                """.formatted(userInfo.getName(), message.getContent(), guestReservationDetails, chatHistorySummary);
+                """.formatted(userInfo.getName(), message.getContent(), guestReservationDetails, recentRequestSummary, chatHistorySummary);
     }
+
+    private String summarizeServiceRequest(ServiceRequest request) {
+        return """
+        Related request:
+        Title: %s
+        Description: %s
+        Current Status: %s
+        Created At: %s
+        """.formatted(
+                request.getRequestTitle() != null ? request.getRequestTitle() : "",
+                request.getRequestDescription() != null ? request.getRequestDescription() : "",
+                request.getStatus() != null ? request.getStatus() : "",
+                request.getCreatedAt() != null ? request.getCreatedAt() : "");
+    }
+
 
     public String buildAdminPrompt(Message message, UserInfo userInfo, UserInfo guestInfo, Reservation guestReservation, List<Message> adminChatHistory) {
         String chatHistorySummary = summarizeChatHistory(adminChatHistory);
@@ -150,11 +166,12 @@ public class PromptBuilderService {
                     Title: %s
                     Description: %s
                     Current Status: %s
+                    Created At: %s
                     
                     Based on the guest's question and the related open request, determine the appropriate action.
                     Possible actions:
                     - SERVICE_REQUEST: If the guest is asking for new service or information related to the existing request. Provide response to guest, staff and admin if needed.
-                    - ESCALATE: If the guest is dissatisfied or requests urgent attention. Response to staff and admin needed.
+                    - ESCALATE: If the guest is dissatisfied or requests urgent attention and service SLA is breached. Decide based on the service request createdAt field with standard SLA (You can set SLA based on task type and standard SLA). Response to staff and admin needed.
                     - COMPLETE: If the guest indicates the issue is resolved. Response to staff and admin if needed.
                     - DELAY: If the guest reports a delay or ongoing issue. Response to staff and admin if needed.
                     - NORMAL: If no action is needed.
@@ -165,7 +182,8 @@ public class PromptBuilderService {
                     chatQuery,
                     bestMatch.getRequestTitle(),
                     bestMatch.getRequestDescription() != null ? bestMatch.getRequestDescription() : "",
-                    bestMatch.getStatus());
+                    bestMatch.getStatus(),
+                    bestMatch.getCreatedAt());
         } else {
             prompt = """
                     You are assisting hotel guest for guest service requests or general query.
@@ -184,9 +202,31 @@ public class PromptBuilderService {
             return "No prior messages.";
         }
         return messages.stream()
-                .map(m -> m.getUserId() + ": " + m.getContent())
+                .map(m -> {
+                    String roleLabel = m.getCreatedBy() != null ? "[" + m.getCreatedBy().name() + "]" : "[USER]";
+                    String timeLabel = (m.getTime() != null && !m.getTime().isEmpty()) ? "[" + m.getTime() + "] " : "";
+                    String mainText = m.getContent() != null ? m.getContent() : "";
+                    String feedbackLabel = "";
+                    feedbackLabel = getFeedbackLabel(m, feedbackLabel);
+                    return timeLabel + roleLabel + ": " + mainText + feedbackLabel;
+                })
                 .collect(Collectors.joining("\n"));
     }
+
+    private static String getFeedbackLabel(Message m, String feedbackLabel) {
+        GuestFeedback feedback = m.getGuestFeedback();
+        if (feedback != null && feedback.getRating() != null && !feedback.getRating().isEmpty()) {
+            String rating = feedback.getRating();
+            String text = feedback.getFeedbackText();
+            if (text != null && !text.isEmpty()) {
+                feedbackLabel = String.format(" (Feedback rating: %s, \"%s\")", rating, text);
+            } else {
+                feedbackLabel = String.format(" (Feedback rating: %s)", rating);
+            }
+        }
+        return feedbackLabel;
+    }
+
     private String summarizeGuestDetail(UserInfo guestDetails, Reservation reservationDetails) {
         return """
                 Name: %s

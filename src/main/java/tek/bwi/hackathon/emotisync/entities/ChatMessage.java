@@ -19,8 +19,7 @@ public class ChatMessage {
     private String id;
     private String chatRequestId;
     private String senderId;
-    private UserRole senderRole;
-    private List<UserRole> visibility;
+    private UserRole createdBy;
     private String message;
     private String status;
     private Instant timestamp;

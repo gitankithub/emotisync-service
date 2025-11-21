@@ -5,14 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import tek.bwi.hackathon.emotisync.client.GeminiClient;
-import tek.bwi.hackathon.emotisync.entities.Message;
-import tek.bwi.hackathon.emotisync.entities.Reservation;
-import tek.bwi.hackathon.emotisync.entities.UserInfo;
-import tek.bwi.hackathon.emotisync.entities.UserThread;
+import tek.bwi.hackathon.emotisync.entities.*;
 import tek.bwi.hackathon.emotisync.models.LLMPayload;
 import tek.bwi.hackathon.emotisync.models.PayloadPart;
 import tek.bwi.hackathon.emotisync.models.LLMRequest;
 import tek.bwi.hackathon.emotisync.models.LLMResponse;
+import tek.bwi.hackathon.emotisync.repository.RequestRepository;
 import tek.bwi.hackathon.emotisync.repository.ReservationRepository;
 import tek.bwi.hackathon.emotisync.repository.ThreadRepository;
 
@@ -30,9 +28,10 @@ public class LLMService {
     private final ReservationRepository reservationRepository;
     private final LLMOrchestrationService llmOrchestrationService;
     private final ThreadRepository threadRepository;
+    private final RequestRepository requestRepository;
 
     @Autowired
-    public LLMService(ObjectMapper objectMapper, PromptBuilderService promptBuilder, GeminiClient geminiClient, UserService userService, ReservationRepository reservationRepository, LLMOrchestrationService llmOrchestrationService, ThreadRepository threadRepository) {
+    public LLMService(ObjectMapper objectMapper, PromptBuilderService promptBuilder, GeminiClient geminiClient, UserService userService, ReservationRepository reservationRepository, LLMOrchestrationService llmOrchestrationService, ThreadRepository threadRepository, RequestRepository requestRepository) {
         this.objectMapper = objectMapper;
         this.promptBuilder = promptBuilder;
         this.geminiClient = geminiClient;
@@ -40,6 +39,7 @@ public class LLMService {
         this.reservationRepository = reservationRepository;
         this.llmOrchestrationService = llmOrchestrationService;
         this.threadRepository = threadRepository;
+        this.requestRepository = requestRepository;
     }
 
     public void processGuestMessage(Message message, List<Message> chatHistory) {
@@ -69,8 +69,8 @@ public class LLMService {
             log.info("Processing staff message: {}", message);
             UserInfo userInfo = userService.getById(message.getUserId());
             log.info("Fetched User id: {}", userInfo != null ? userInfo.getUserId() : "null");
-            UserThread userThread = threadRepository.findByThreadId(message.getThreadId());
-            UserInfo guestInfo = userThread.getParticipantIds().stream()
+            ServiceRequest serviceRequest = requestRepository.findByUserThread_ThreadId(message.getThreadId());
+            UserInfo guestInfo = serviceRequest.getUserThread().getParticipantIds().stream()
                     .filter(participant -> participant.getRole().equals("GUEST"))
                     .findFirst()
                     .map(participant -> userService.getById(participant.getId()))
@@ -82,6 +82,7 @@ public class LLMService {
                     Objects.requireNonNull(userInfo),
                     getGuestInfo(reservation),
                     reservation,
+                    serviceRequest,
                     chatHistory
             );
             log.info("Constructed Prompt: {}", prompt);
