@@ -34,6 +34,7 @@ public class PromptBuilderService {
                   - If the guest's input suggests a new service request (for amenities, issues, or help), set actionNeeded to true, with actionDetail describing what should be done.
                   - If a closure is needed, set actionNeeded to true and in actionDetail specify 'type' as closeRequest.
                   - If not, set actionNeeded to false and skip extra fields.
+                  - Never add any technical details in responses
                                 
                 Return this structured JSON:
                 {
@@ -80,6 +81,8 @@ public class PromptBuilderService {
                 - Generate a clear response for staff if case of any action taken (responseForStaff).
                 - Generate appropriate messages for guest upon each service request update if make sense.
                 - Only include each field if relevant.
+                - Never add any technical details in responses
+                - If there is response for guest, then append the response with "To respond to an existing service, please use the chat assistant and mention your request type—for example, “Laundry Pickup” or “Room Cleaning”—when you start the conversation.`;"
                                 
                 Return JSON:
                 {
@@ -200,6 +203,42 @@ public class PromptBuilderService {
         }
         return prompt;
     }
+
+    public String buildRequestAnalysisPrompt(
+            ServiceRequest req, List<Message> messages, List<String> emojiFeedback,
+            String writtenFeedback, int responseDelayMinutes, boolean slaBreached) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Service Request:\n")
+                .append("ID: ").append(req.getRequestId()).append("\n")
+                .append("Title: ").append(req.getRequestTitle()).append("\n")
+                .append("Description: ").append(req.getRequestDescription()).append("\n")
+                .append("Urgency: ").append(req.getRequestUrgency()).append("\n")
+                .append("AssignedTo: ").append(req.getAssignedTo()).append("\n")
+                .append("Status: ").append(req.getStatus()).append("\n\n");
+        sb.append("Conversation Transcript:\n");
+        for (Message msg : messages) {
+            sb.append(msg.getTime()).append(" [").append(msg.getCreatedBy()).append("]: ")
+                    .append(msg.getContent()).append("\n");
+        }
+        sb.append("\nGuest Emoji Feedback: ").append(String.join(", ", emojiFeedback)).append("\n");
+        sb.append("Written Feedback: ").append(writtenFeedback).append("\n");
+        sb.append("Response Delay (min): ").append(responseDelayMinutes).append("\n");
+        sb.append("SLA Breached: ").append(slaBreached).append("\n\n");
+        sb.append(
+                "Instructions: "
+                        + "Analyze guest and staff sentiment and attitude based on the transcript and feedback. "
+                        + "For each participant (guest and staff), return both: "
+                        + "(a) sentiment score (number, 1-5, or null if unavailable), "
+                        + "(b) attitude label (choose: empathetic, professional, passive, assertive, apologetic, indifferent, appreciative, dismissive, etc.; null if unavailable). "
+                        + "Also analyze any SLA breaches, complaints, improvement suggestions, escalation reasons, response delay, and emotional keywords."
+                        + " Respond with strict JSON format, with fields: "
+                        + "summary, guestSentimentScore, guestAttitude, staffSentimentScore, staffAttitude, slaBreached, mainComplaint, improvementSuggestion, escalationReason, responseDelayMinutes, emotionalKeywords."
+                        + " If any score or label is unavailable, set it to null or 0 (for numbers); do not use 'N/A' or extras."
+                        + " Do not add any text outside the JSON. Always return valid strict JSON that can be parsed."
+        );
+        return sb.toString();
+    }
+
 
     public String summarizeChatHistory(List<Message> messages) {
         if (messages == null || messages.isEmpty()) {

@@ -22,7 +22,7 @@ public class UserThread {
     private String requestId;
     private List<ThreadParticipant> participantIds;
     private ServiceRequestStatus status;
-    @DBRef
+    @DBRef(lazy = false)
     private List<Message> messages;
     private String createdAt;
     private String updatedAt;
