@@ -143,7 +143,7 @@ public class ChatRequestService {
         ServiceRequest bestMatch = null;
         double bestScore = 0;
         for (ServiceRequest sr : activeRequests) {
-            List<Float> srEmbedding = embeddingClient.embedText(sr.getRequestTitle());
+            List<Float> srEmbedding = embeddingClient.embedText(sr.getRequestId() + ":" + sr.getRequestTitle());
             double score = cosineSimilarity(queryEmbedding, srEmbedding);
             if (score > bestScore) {
                 bestScore = score;
